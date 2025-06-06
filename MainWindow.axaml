@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:beampdf="clr-namespace:beampdf"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="beampdf.MainWindow"
+        Title="beampdf"
+        Focusable="True">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top">
+            <Button Click="LoadPdfBtn_Click">
+                <Button.HotKey>Ctrl+O</Button.HotKey>
+                Open
+            </Button>
+        </StackPanel>
+
+        <Grid ColumnDefinitions="*, 0.5, 400">
+            <Panel Grid.Column="0">
+                <Image Name="PresenterRenderTarget"></Image>
+                <beampdf:DrawingArea Name="DrawingArea"></beampdf:DrawingArea>
+            </Panel>
+
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Focusable="False" />
+
+            <Panel Grid.Column="2">
+                <Image Name="PreviewRenderTarget"></Image>
+            </Panel>
+        </Grid>
+    </DockPanel>
+</Window>
