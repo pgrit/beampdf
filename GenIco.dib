@@ -1,0 +1,80 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"},{"name":"fsharp","languageName":"F#","aliases":["f#","fs"]},{"name":"html","languageName":"HTML"},{"name":"http","languageName":"HTTP"},{"name":"javascript","languageName":"JavaScript","aliases":["js"]},{"name":"mermaid","languageName":"Mermaid"},{"name":"pwsh","languageName":"PowerShell","aliases":["powershell"]},{"name":"value"}]}}
+
+#!markdown
+
+Writes the Logo.png image into a .ico file. Since .ico can store a set of .png at different resolutions directly this basically just creates the required header stuff.
+
+#!csharp
+
+using System.Runtime.InteropServices;
+
+struct Header {
+    Int16 Reserved = 0;
+    Int16 Format = 1;
+    public Int16 NumImages = 1;
+    public Header(int numImages) {
+        NumImages = (Int16)numImages;
+    }
+}
+
+struct ImageEntry {
+    public byte Width = 0;
+    public byte Height = 0;
+    public byte NumPaletteColors = 0;
+    byte Reserved = 0;
+    Int16 ColorPlane = 0;
+    Int16 BitsPerPixel = 0;
+    public UInt32 Size;
+    public UInt32 Offset;
+
+    public ImageEntry(byte resolution, uint size, uint offset) {
+        Width = Height = resolution;
+        Size = size;
+        Offset = offset;
+    }
+}
+
+byte[] StructToBytes<T>(T data) {
+    int size = Marshal.SizeOf(data);
+    byte[] bytes = new byte[size];
+    IntPtr ptr = IntPtr.Zero;
+    try {
+        ptr = Marshal.AllocHGlobal(size);
+        Marshal.StructureToPtr(data, ptr, true);
+        Marshal.Copy(ptr, bytes, 0, size);
+    } finally {
+        Marshal.FreeHGlobal(ptr);
+    }
+    return bytes;
+}
+
+#!csharp
+
+List<byte> resolutions = [ 16, 24, 32, 48, 20, 30, 40, 0 ];
+
+List<byte[]> images = new();
+foreach (byte r in resolutions)
+    images.Add(System.IO.File.ReadAllBytes($"Assets/{(r == 0 ? 256 : r)}x{(r == 0 ? 256 : r)}.png"));
+
+#!csharp
+
+{
+    using var stream = new System.IO.FileStream("Assets/Logo.ico", System.IO.FileMode.Create);
+    using var writer = new System.IO.BinaryWriter(stream);
+
+    writer.Write(StructToBytes(new Header(images.Count)));
+
+    // Write image directory
+    uint offset = (uint)(Marshal.SizeOf(typeof(Header)) + images.Count * Marshal.SizeOf(typeof(ImageEntry)));
+    for (int i = 0; i < resolutions.Count; ++i)
+    {
+        writer.Write(StructToBytes(new ImageEntry(resolutions[i], (uint)images[i].Length, offset)));
+        offset += (uint)images[i].Length;
+    }
+
+    // Write the actual images
+    foreach (var b in images)
+        writer.Write(b);
+}

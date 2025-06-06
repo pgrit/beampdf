@@ -20,14 +20,14 @@ public partial class MainWindow : Window
 
         KeyDown += HandleShortcuts;
 
-
         // TODO display timer + reset feature
-
-        // TODO screen selection: specify screen number for slides view (presenter can be dragged, ez)
 
         // TODO recent file dialog with previews + Ctrl+R to open it
 
         // TODO video playback?
+
+        // TODO transitions: fade or switch
+        // - control times, separately for pages with same label (=animations) and different labels (=transitions)
     }
 
     int pageInput = 0;

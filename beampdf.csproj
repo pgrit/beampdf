@@ -6,6 +6,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <LangVersion>preview</LangVersion>
+    <ApplicationIcon>Assets/Logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,5 +21,9 @@
     </PackageReference>
     <PackageReference Include="MuPDF.NET" Version="3.2.8-rc.7" />
     <PackageReference Include="PDFtoImage" Version="5.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**"/>
   </ItemGroup>
 </Project>
