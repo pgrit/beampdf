@@ -6,13 +6,20 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="beampdf.MainWindow"
         Title="beampdf"
-        Focusable="True">
+        Focusable="True"
+        DragDrop.AllowDrop="True">
     <DockPanel>
         <Panel DockPanel.Dock="Top">
-            <Button Click="LoadPdfBtn_Click" HorizontalAlignment="Left">
-                <Button.HotKey>O</Button.HotKey>
-                Open
-            </Button>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Click="LoadPdfBtn_Click" ToolTip.Tip="Open a PDF file (O)">
+                    <Button.HotKey>O</Button.HotKey>
+                    Open
+                </Button>
+                <Button Click="LoadRecentBtn_Click" ToolTip.Tip="Pick a recently opened file (R)">
+                    <Button.HotKey>R</Button.HotKey>
+                    Recent
+                </Button>
+            </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <TextBlock Name="PresentTime" FontSize="40" Padding="10,10,10,10" Width="200"></TextBlock>

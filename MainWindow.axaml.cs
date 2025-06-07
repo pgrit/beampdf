@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
@@ -33,16 +34,36 @@ public partial class MainWindow : Window
         timer.Start();
         UpdateTime();
 
-        // TODO recent file dialog with previews + Ctrl+R to open it
+        // Horizontally scroll the thumbnails with the mouse wheel
+        SlideStripScrollViewer.PointerWheelChanged += (sender, e) => {
+            var oldX = SlideStripScrollViewer.Offset.X;
+            SlideStripScrollViewer.Offset = SlideStripScrollViewer.Offset.WithX(oldX - 96 * e.Delta.Y);
+        };
 
-        // TODO gallery view to select a slide
+        AddHandler(DragDrop.DropEvent, HandleDrop);
 
-        // TODO Zoom-in feature: ctrl+drag to select a crop, ctrl+click or RMB, or slide switch to cancel
+        // TODO Zoom-in feature: ctrl+drag or RMB to select a crop, ctrl+click or RMB, or slide switch to cancel
 
         // TODO video playback?
 
         // TODO transitions: fade or switch
         // - control times, separately for pages with same label (=animations) and different labels (=transitions)
+    }
+
+    private void HandleDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetFiles() == null)
+            return;
+
+        // Load the first file that is valid
+        foreach (var file in e.Data.GetFiles())
+        {
+            if (File.Exists(file.Path.LocalPath))
+            {
+                _ = OpenDocument(file.Path.LocalPath);
+                break;
+            }
+        }
     }
 
     protected override void OnClosing(WindowClosingEventArgs e)
@@ -202,6 +223,8 @@ public partial class MainWindow : Window
 
     int lastPage = -1;
 
+    public static readonly SolidColorBrush ThumbHighlightColor = new(0xffd3642d);
+
     async Task RenderCurrentPage()
     {
         if (openDoc == null)
@@ -240,7 +263,7 @@ public partial class MainWindow : Window
         {
             if (lastPage >= 0 && lastPage < thumbnails.Length)
                 thumbnails[lastPage].Background = Brushes.Transparent;
-            thumbnails[curPage].Background = Brushes.Aquamarine;
+            thumbnails[curPage].Background = ThumbHighlightColor;
 
             // Compute scroll position to center this slide
             double x = thumbnails[curPage].Bounds.X;
@@ -288,6 +311,33 @@ public partial class MainWindow : Window
         presentStart = DateTime.Now;
     }
 
+    async void LoadRecentBtn_Click(object sender, RoutedEventArgs eventArgs)
+    {
+        var picker = new RecentFilePicker();
+        await picker.ShowDialog(this);
+        if (picker.SelectedFilename != null)
+        {
+            await OpenDocument(picker.SelectedFilename);
+        }
+    }
+
+    async Task OpenDocument(string filename)
+    {
+        if ((!openDoc?.IsClosed) ?? true)
+            openDoc?.Close();
+        openDoc = new Document(filename);
+
+        RecentFilePicker.AddFile(filename, DateTime.Now);
+
+        ResolvePageLabels();
+
+        curPage = 0;
+        presentStart = null;
+        await RenderCurrentPage();
+
+        PopulateImageStrip();
+    }
+
     async void LoadPdfBtn_Click(object sender, RoutedEventArgs eventArgs)
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -298,16 +348,7 @@ public partial class MainWindow : Window
 
         if (files.Count == 1)
         {
-            openDoc?.Close();
-            openDoc = new Document(files[0].Path.LocalPath);
-
-            ResolvePageLabels();
-
-            curPage = 0;
-            presentStart = null;
-            _ = RenderCurrentPage();
-
-            PopulateImageStrip();
+            _ = OpenDocument(files[0].Path.LocalPath);
         }
 
         // Return focus to the parent window so our key bindings keep working
