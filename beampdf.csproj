@@ -9,6 +9,17 @@
     <ApplicationIcon>Assets/Logo.ico</ApplicationIcon>
   </PropertyGroup>
 
+  <!-- Native AOT; see https://docs.avaloniaui.net/zh-Hans/docs/deployment/native-aot -->
+  <!-- Doesn't work though due to MuPDF.NET, it fails loading native binaries -->
+  <!-- <PropertyGroup>
+    <PublishAot>true</PublishAot>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <TrimMode>link</TrimMode>
+  </PropertyGroup>
+  <ItemGroup>
+    <TrimmerRootAssembly Include="Avalonia.Themes.Fluent" />
+  </ItemGroup> -->
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.6" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.6" />
