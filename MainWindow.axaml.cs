@@ -1,11 +1,17 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Timers;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using MuPDF.NET;
 
 namespace beampdf;
@@ -14,15 +20,24 @@ public partial class MainWindow : Window
 {
     DisplayWindow displayWindow;
 
+    Timer timer;
+
     public MainWindow()
     {
         InitializeComponent();
 
         KeyDown += HandleShortcuts;
 
-        // TODO display timer + reset feature
+        timer = new(1000.0);
+        timer.Elapsed += (_, _) => UpdateTime();
+        timer.Start();
+        UpdateTime();
 
         // TODO recent file dialog with previews + Ctrl+R to open it
+
+        // TODO gallery view to select a slide
+
+        // TODO Zoom-in feature: ctrl+drag to select a crop, ctrl+click or RMB, or slide switch to cancel
 
         // TODO video playback?
 
@@ -30,8 +45,48 @@ public partial class MainWindow : Window
         // - control times, separately for pages with same label (=animations) and different labels (=transitions)
     }
 
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        timer.Stop();
+    }
+
     int pageInput = 0;
     int numPageInput = 0;
+
+    DateTime? presentStart;
+
+    void UpdateTime()
+    {
+        try
+        {
+            if (presentStart.HasValue)
+            {
+                var elapsed = DateTime.Now - presentStart;
+
+                Dispatcher.UIThread.Invoke(() =>
+                {
+                    PresentTime.Text = elapsed.Value.ToString(@"hh\:mm\:ss");
+                });
+            }
+            else
+            {
+                Dispatcher.UIThread.Invoke(() =>
+                {
+                    PresentTime.Text = "--:--:--";
+                });
+            }
+
+            Dispatcher.UIThread.Invoke(() =>
+            {
+                SystemTime.Text = DateTime.Now.ToString("HH:mm");
+            });
+        }
+        catch(TaskCanceledException)
+        {
+            // Occurs if the window closed between invoking this timer and dispatching the UI call => ignore
+        }
+    }
 
     void HandleShortcuts(object sender, KeyEventArgs e)
     {
@@ -47,7 +102,7 @@ public partial class MainWindow : Window
         {
             curPage = pageNumbers.FindLastIndex(idx => idx == pageInput);
 
-            RenderCurrentPage();
+            _ = RenderCurrentPage();
             pageInput = 0;
             numPageInput = 0;
         }
@@ -123,9 +178,9 @@ public partial class MainWindow : Window
         Activate();
 
         displayWindow.Resized += (_, args) => {
-            RenderCurrentPage();
+            _ = RenderCurrentPage();
         };
-        RenderCurrentPage();
+        _ = RenderCurrentPage();
     }
 
     Document openDoc;
@@ -135,17 +190,19 @@ public partial class MainWindow : Window
     void NextSlide()
     {
         curPage++;
-        RenderCurrentPage();
+        _ = RenderCurrentPage();
     }
 
     void PreviousSlide()
     {
         curPage--;
         if (curPage < 0) curPage = 0;
-        RenderCurrentPage();
+        _ = RenderCurrentPage();
     }
 
-    void RenderCurrentPage()
+    int lastPage = -1;
+
+    async Task RenderCurrentPage()
     {
         if (openDoc == null)
             return;
@@ -153,27 +210,22 @@ public partial class MainWindow : Window
         if (curPage >= openDoc.PageCount)
             curPage = openDoc.PageCount - 1;
 
-        float targetWidth = (float)((displayWindow?.Width ?? Width) * VisualRoot.RenderScaling);
-        float zoomX = targetWidth / openDoc[curPage].Rect.Width;
-        float targetHeight = (float)((displayWindow?.Height ?? Height) * VisualRoot.RenderScaling);
-        float zoomY = targetHeight / openDoc[curPage].Rect.Height;
-        float zoom = float.Min(zoomX, zoomY);
-
-        Pixmap pixmap = openDoc[curPage].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb", alpha: false, annots: false);
-        var bmp = new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque,
-            (nint)pixmap.SamplesPtr, new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
-        PresenterRenderTarget.Source = bmp;
+        if (curPage > 0 && !presentStart.HasValue)
+            presentStart = DateTime.Now;
 
         if (displayWindow != null)
-            displayWindow.RenderTarget.Source = bmp;
+        {
+            displayWindow?.RenderTarget.Source = await RenderPage(curPage, displayWindow.Width, displayWindow.Height);
+        }
+
+        var presenterBounds = PresenterRenderTarget.GetVisualParent().Bounds;
+        PresenterRenderTarget.Source = await RenderPage(curPage, presenterBounds.Width, presenterBounds.Height);
 
         // display preview of next page
         if (curPage + 1 < openDoc.PageCount)
         {
-            pixmap = openDoc[curPage+1].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb", alpha: false, annots: false);
-            bmp = new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque,
-                (nint)pixmap.SamplesPtr, new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
-            PreviewRenderTarget.Source = bmp;
+            var previewBounds = PresenterRenderTarget.GetVisualParent().Bounds;
+            PreviewRenderTarget.Source = await RenderPage(curPage + 1, previewBounds.Width, previewBounds.Height);
         }
         else
         {
@@ -182,6 +234,21 @@ public partial class MainWindow : Window
 
         // Update drawing area
         DrawingArea.SetAspectRatio(openDoc[curPage].Rect.Height / openDoc[curPage].Rect.Width);
+
+        // Highlight thumbnail
+        if (thumbnails != null)
+        {
+            if (lastPage >= 0 && lastPage < thumbnails.Length)
+                thumbnails[lastPage].Background = Brushes.Transparent;
+            thumbnails[curPage].Background = Brushes.Aquamarine;
+
+            // Compute scroll position to center this slide
+            double x = thumbnails[curPage].Bounds.X;
+            double w = SlideStripScrollViewer.Bounds.Width;
+            double offset = x - 0.5 * w; // how much to scroll to the right
+            SlideStripScrollViewer.Offset = new(offset, 0);
+        }
+        lastPage = curPage;
     }
 
     List<int> pageNumbers = [];
@@ -216,6 +283,11 @@ public partial class MainWindow : Window
         }
     }
 
+    void ResetTimerBtn_Click(object sender, RoutedEventArgs eventArgs)
+    {
+        presentStart = DateTime.Now;
+    }
+
     async void LoadPdfBtn_Click(object sender, RoutedEventArgs eventArgs)
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -226,15 +298,91 @@ public partial class MainWindow : Window
 
         if (files.Count == 1)
         {
+            openDoc?.Close();
             openDoc = new Document(files[0].Path.LocalPath);
 
             ResolvePageLabels();
 
             curPage = 0;
-            RenderCurrentPage();
+            presentStart = null;
+            _ = RenderCurrentPage();
+
+            PopulateImageStrip();
         }
 
         // Return focus to the parent window so our key bindings keep working
         Focus();
+    }
+
+    async Task<Bitmap> RenderPage(int page, double targetWidth, double targetHeight)
+    {
+        float zoomX = (float)(targetWidth * VisualRoot.RenderScaling) / openDoc[curPage].Rect.Width;
+        float zoomY = (float)(targetHeight * VisualRoot.RenderScaling) / openDoc[curPage].Rect.Height;
+        float zoom = float.Min(zoomX, zoomY);
+
+        return await Task.Run(() =>
+        {
+            lock(openDoc)
+            {
+                Pixmap pixmap = openDoc[page].GetPixmap(matrix: new Matrix(zoom, zoom), colorSpace: "rgb",
+                    alpha: false, annots: false);
+                return new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque, (nint)pixmap.SamplesPtr,
+                    new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
+            }
+        });
+    }
+
+    StackPanel[] thumbnails;
+
+    async void PopulateImageStrip()
+    {
+        SlideStrip.Children.Clear();
+        thumbnails = null;
+
+        List<StackPanel> panels = [];
+        double size = 0.0;
+        for (int i = 0; i < pageNumbers.Count; ++i)
+        {
+            if (i > 0 && i < pageNumbers.Count - 1 && pageNumbers[i] == pageNumbers[i + 1] )
+            {
+                panels.Add(panels[^1]); // Duplicate the reference for easy lookup later
+                continue;
+            }
+
+            var bmp = await RenderPage(i, 96, 96);
+
+            // shrink (or grow) height to snugly fit the biggest thumbnails
+            double aspect = openDoc[curPage].Rect.Height / openDoc[curPage].Rect.Width;
+            double tHeight = 96 * aspect;
+            size = Math.Max(size, tHeight + 21);
+
+            int pageNum = i;
+            void jumpTo()
+            {
+                curPage = pageNum;
+                _ = RenderCurrentPage();
+            }
+
+            StackPanel stack = new() { Margin = new(0, 0, 4, 0) };
+            var img = new Image() { Width = 96, Height = 96 * aspect, Source = bmp, Cursor = new Cursor(StandardCursorType.Hand) };
+            var txt = new Avalonia.Controls.TextBlock()
+            {
+                Width = 96,
+                TextAlignment = TextAlignment.Center,
+                Text = $"{pageNumbers[i]}",
+                Margin = new(0, 1, 0, 0),
+                Cursor = new Cursor(StandardCursorType.Hand)
+            };
+            img.PointerReleased += (_,_) => jumpTo();
+            txt.PointerReleased += (_,_) => jumpTo();
+            stack.Children.Add(img);
+            stack.Children.Add(txt);
+            SlideStrip.Children.Add(stack);
+
+            panels.Add(stack);
+        }
+        SlideStrip.Height = size;
+        (SlideStrip.Parent as Control).Height = size;
+        thumbnails = [.. panels];
     }
 }
