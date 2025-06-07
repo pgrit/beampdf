@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -13,7 +14,6 @@ using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using MuPDF.NET;
 
 namespace beampdf;
 
@@ -42,12 +42,129 @@ public partial class MainWindow : Window
 
         AddHandler(DragDrop.DropEvent, HandleDrop);
 
-        // TODO Zoom-in feature: ctrl+drag or RMB to select a crop, ctrl+click or RMB, or slide switch to cancel
-
-        // TODO video playback?
-
         // TODO transitions: fade or switch
         // - control times, separately for pages with same label (=animations) and different labels (=transitions)
+    }
+
+    Point? cropA, cropB;
+    bool isCropUpdating;
+
+    void UpdateCrop()
+    {
+        if (cropA == null || cropB == null)
+        {
+            CropMarker.IsVisible = false;
+            return;
+        }
+
+        // Hide the crop if it does not contain at least one pixel
+        var cropSize = cropB.Value - cropA.Value;
+        if (cropSize.X == 0 || cropSize.Y == 0)
+            CropMarker.IsVisible = false;
+        else
+        {
+            Canvas.SetLeft(CropMarker, Math.Min(cropA.Value.X, cropB.Value.X));
+            Canvas.SetTop(CropMarker, Math.Min(cropA.Value.Y, cropB.Value.Y));
+            CropMarker.Width = Math.Abs(cropSize.X);
+            CropMarker.Height = Math.Abs(cropSize.Y);
+            CropMarker.IsVisible = true;
+        }
+    }
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        var point = e.GetCurrentPoint(PresenterPanel);
+
+        if (!point.Properties.IsRightButtonPressed &&
+            !(point.Properties.IsLeftButtonPressed && e.KeyModifiers == KeyModifiers.Control))
+        {
+            if (isCropUpdating)
+            {
+                isCropUpdating = false;
+                UpdateCrop();
+            }
+        }
+        else
+        {
+            if (isCropUpdating)
+            {
+                cropB = point.Position;
+            }
+            else
+            {
+                cropA = point.Position;
+                cropB = null; // This removes to crop until the pointer has moved
+                isCropUpdating = true;
+            }
+            UpdateCrop();
+        }
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton == MouseButton.Right ||
+            e.InitialPressMouseButton == MouseButton.Left && e.KeyModifiers == KeyModifiers.Control)
+        {
+            if (cropB == null || cropA == null)
+            {
+                _ = RenderCurrentPage();
+                return;
+            }
+
+            var cropSize = cropB.Value - cropA.Value;
+            if (cropSize.X == 0 || cropSize.Y == 0)
+            {
+                _ = RenderCurrentPage();
+            }
+            else
+            {
+                var uA = (cropA.Value.X - MarkerCanvas.Bounds.Left) / MarkerCanvas.Bounds.Size.Width;
+                var uB = (cropB.Value.X - MarkerCanvas.Bounds.Left) / MarkerCanvas.Bounds.Size.Width;
+                var vA = (cropA.Value.Y - MarkerCanvas.Bounds.Top) / MarkerCanvas.Bounds.Size.Height;
+                var vB = (cropB.Value.Y - MarkerCanvas.Bounds.Top) / MarkerCanvas.Bounds.Size.Height;
+                var uMin = Math.Min(uA, uB);
+                var vMin = Math.Min(vA, vB);
+                var uMax = Math.Max(uA, uB);
+                var vMax = Math.Max(vA, vB);
+                ShowCrop(uMin, vMin, uMax, vMax);
+            }
+
+            cropB = null;
+            UpdateCrop();
+        }
+    }
+
+    private void ShowCrop(double uMin, double vMin, double uMax, double vMax)
+    {
+        if (openDoc == null) return;
+
+        float x0 = (float)(openDoc[curPage].Rect.X0 + uMin * openDoc[curPage].Rect.Width);
+        float x1 = (float)(openDoc[curPage].Rect.X0 + uMax * openDoc[curPage].Rect.Width);
+        float y0 = (float)(openDoc[curPage].Rect.Y0 + vMin * openDoc[curPage].Rect.Height);
+        float y1 = (float)(openDoc[curPage].Rect.Y0 + vMax * openDoc[curPage].Rect.Height);
+
+        float yscale = (y1 - y0) / openDoc[curPage].Rect.Height;
+        float xscale = (x1 - x0) / openDoc[curPage].Rect.Width;
+
+        var presenterBounds = PresenterRenderTarget.GetVisualParent().Bounds;
+        var w = presenterBounds.Width;
+        var h = presenterBounds.Height;
+
+        float zoomX = (float)(w * VisualRoot.RenderScaling / xscale) / openDoc[curPage].Rect.Width;
+        float zoomY = (float)(h * VisualRoot.RenderScaling / yscale) / openDoc[curPage].Rect.Height;
+        float zoom = float.Min(zoomX, zoomY);
+
+        MuPDF.NET.Rect clipRect = new(x0, y0, x1, y1);
+
+        lock(openDoc)
+        {
+            MuPDF.NET.Pixmap pixmap = openDoc[curPage].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb",
+                alpha: false, annots: false, clip: clipRect);
+            var bmp = new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque, (nint)pixmap.SamplesPtr,
+                new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
+
+            displayWindow?.RenderTarget.Source = bmp;
+            PresenterRenderTarget.Source = bmp;
+        }
     }
 
     private void HandleDrop(object sender, DragEventArgs e)
@@ -204,7 +321,7 @@ public partial class MainWindow : Window
         _ = RenderCurrentPage();
     }
 
-    Document openDoc;
+    MuPDF.NET.Document openDoc;
     List<MuPDF.NET.Label> pageLabels;
     int curPage = 0;
 
@@ -256,7 +373,9 @@ public partial class MainWindow : Window
         }
 
         // Update drawing area
-        DrawingArea.SetAspectRatio(openDoc[curPage].Rect.Height / openDoc[curPage].Rect.Width);
+        var aspect = openDoc[curPage].Rect.Height / openDoc[curPage].Rect.Width;
+        DrawingArea.SetAspectRatio(aspect);
+        MarkerCanvas.Height = aspect * MarkerCanvas.Bounds.Width;
 
         // Highlight thumbnail
         if (thumbnails != null)
@@ -325,7 +444,7 @@ public partial class MainWindow : Window
     {
         if ((!openDoc?.IsClosed) ?? true)
             openDoc?.Close();
-        openDoc = new Document(filename);
+        openDoc = new MuPDF.NET.Document(filename);
 
         RecentFilePicker.AddFile(filename, DateTime.Now);
 
@@ -365,7 +484,7 @@ public partial class MainWindow : Window
         {
             lock(openDoc)
             {
-                Pixmap pixmap = openDoc[page].GetPixmap(matrix: new Matrix(zoom, zoom), colorSpace: "rgb",
+                MuPDF.NET.Pixmap pixmap = openDoc[page].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb",
                     alpha: false, annots: false);
                 return new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque, (nint)pixmap.SamplesPtr,
                     new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);

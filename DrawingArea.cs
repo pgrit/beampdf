@@ -29,12 +29,7 @@ public class DrawingArea : Panel
     void HandleDraw(PointerEventArgs evt, Image target)
     {
         var point = evt.GetCurrentPoint(target);
-        // if (e.Pointer.Type == PointerType.Pen)
-        // {
-        //     Draw(point.Position, point.Properties.Pressure);
-        // }
-        // else
-        if (point.Properties.IsLeftButtonPressed)
+        if (point.Properties.IsLeftButtonPressed && !evt.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
             // Map position to that of the render target
             double scaleX = target.Bounds.Width / resX;
@@ -48,6 +43,8 @@ public class DrawingArea : Panel
 
     protected override void OnPointerMoved(PointerEventArgs e) => HandleDraw(e, viewer);
 
+    public static readonly SolidColorBrush DrawColor = new(0xff127db2); // TODO shortcuts to switch color
+
     void Draw(Point pos, float pressure)
     {
         using (DrawingContext ctx = image.CreateDrawingContext(false))
@@ -60,7 +57,7 @@ public class DrawingArea : Panel
                     RadiusX = pressure * 10,
                     RadiusY = pressure * 10,
                 },
-                Brush = Brushes.Blue,
+                Brush = DrawColor,
             }.Draw(ctx);
         }
 

@@ -38,9 +38,12 @@
         </ScrollViewer>
 
         <Grid ColumnDefinitions="*, 0.5, 600">
-            <Panel Grid.Column="0">
+            <Panel Grid.Column="0" Name="PresenterPanel">
                 <Image Name="PresenterRenderTarget" VerticalAlignment="Top"></Image>
                 <beampdf:DrawingArea Name="DrawingArea" VerticalAlignment="Top"></beampdf:DrawingArea>
+                <Canvas Name="MarkerCanvas" VerticalAlignment="Top">
+                    <Rectangle Name="CropMarker" IsVisible="False" Stroke="Red" StrokeThickness="2"></Rectangle>
+                </Canvas>
             </Panel>
 
             <GridSplitter Grid.Column="1" ResizeDirection="Columns" Focusable="False" />
