@@ -26,6 +26,8 @@ public class DrawingArea : Panel
     Image viewer = new();
     RenderTargetBitmap image;
 
+    PointerPoint? lastP;
+
     void HandleDraw(PointerEventArgs evt, Image target)
     {
         var point = evt.GetCurrentPoint(target);
@@ -37,6 +39,32 @@ public class DrawingArea : Panel
             Point scaledPos = new(point.Position.X / scaleX, point.Position.Y / scaleY);
 
             Draw(scaledPos, point.Properties.Pressure);
+
+            if (lastP != null)
+            {
+                var dist = Point.Distance(point.Position, lastP.Value.Position);
+                const double threshold = 0.1;
+                if (dist > threshold)
+                {
+                    // Interpolate between the positions if motion exceeded the minimum
+                    int numSplats = (int)(dist / threshold);
+                    for (int i = 1; i < numSplats - 1; ++i)
+                    {
+                        var d = point.Position - lastP.Value.Position;
+                        Vector dir = new(d.X / dist, d.Y / dist);
+                        var p = lastP.Value.Position + dir * i * threshold;
+
+                        scaledPos = new(p.X / scaleX, p.Y / scaleY);
+                        Draw(scaledPos, point.Properties.Pressure);
+                    }
+                }
+            }
+
+            lastP = point;
+        }
+        else
+        {
+            lastP = null;
         }
         // TODO linearly interpolate -- place additional dots along the line to the previous position with space depending on radius
     }
