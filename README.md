@@ -25,6 +25,11 @@ A simple cross-platform app to present a PDF slideshow. Based on [Avalonia](http
   - Reset via right-click or `Ctrl+left`
 - Recent files (open dialog with `R`)
   - List of opened files is tracked in a `.csv` file in the `ApplicationData` folder (as reported by `Environment.SpecialFolder.ApplicationData`)
+- Speaker notes
+  - As embedded files in the PDF
+    - filename must be `XX-speaker-note` where XX is the slide number (page label, not "real" page)
+    - content is interpreted as UTF-8 string
+  - As annotations: annotations in the PDF are rendered into the presenter view only
 
 ## Screenshots
 ### The presenter view in action

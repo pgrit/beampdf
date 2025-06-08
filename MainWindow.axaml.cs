@@ -342,7 +342,7 @@ public partial class MainWindow : Window
         }
 
         var presenterBounds = PresenterRenderTarget.GetVisualParent().Bounds;
-        PresenterRenderTarget.Source = await RenderPage(curPage, presenterBounds.Width, presenterBounds.Height);
+        PresenterRenderTarget.Source = await RenderPage(curPage, presenterBounds.Width, presenterBounds.Height, true);
 
         // display preview of next page
         if (curPage + 1 < openDoc.PageCount)
@@ -374,6 +374,12 @@ public partial class MainWindow : Window
             SlideStripScrollViewer.Offset = new(offset, 0);
         }
         lastPage = curPage;
+
+        // Display speaker notes
+        if (notes.TryGetValue(pageNumbers[curPage], out string note))
+            SpeakerNotes.Text = note;
+        else
+            SpeakerNotes.Text = "";
     }
 
     List<int> pageNumbers = [];
@@ -408,6 +414,29 @@ public partial class MainWindow : Window
         }
     }
 
+    Dictionary<int, string> notes;
+
+    void ExtractNotes()
+    {
+        notes = [];
+
+        int num = openDoc.GetEmbfileCount();
+        for (int i = 0; i < num; ++i)
+        {
+            var info = openDoc.GetEmbfileInfo(i);
+            if (!info.FileName.EndsWith("-speaker-note"))
+                continue;
+
+            string nr = info.FileName.Split('-')[0];
+            if (!int.TryParse(nr, out int slideNum))
+                continue;
+
+            string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
+            // TODO parse markdown
+            notes.Add(slideNum, content);
+        }
+    }
+
     void ResetTimerBtn_Click(object sender, RoutedEventArgs eventArgs)
     {
         presentStart = DateTime.Now;
@@ -432,6 +461,7 @@ public partial class MainWindow : Window
         RecentFilePicker.AddFile(filename, DateTime.Now);
 
         ResolvePageLabels();
+        ExtractNotes();
 
         curPage = 0;
         presentStart = null;
@@ -457,7 +487,7 @@ public partial class MainWindow : Window
         Focus();
     }
 
-    async Task<Bitmap> RenderPage(int page, double targetWidth, double targetHeight)
+    async Task<Bitmap> RenderPage(int page, double targetWidth, double targetHeight, bool showAnnotations = false)
     {
         float zoomX = (float)(targetWidth * VisualRoot.RenderScaling) / openDoc[curPage].Rect.Width;
         float zoomY = (float)(targetHeight * VisualRoot.RenderScaling) / openDoc[curPage].Rect.Height;
@@ -468,7 +498,7 @@ public partial class MainWindow : Window
             lock(openDoc)
             {
                 MuPDF.NET.Pixmap pixmap = openDoc[page].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb",
-                    alpha: false, annots: false);
+                    alpha: false, annots: showAnnotations);
                 return new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque, (nint)pixmap.SamplesPtr,
                     new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
             }

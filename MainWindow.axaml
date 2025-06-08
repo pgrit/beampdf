@@ -48,9 +48,10 @@
 
             <GridSplitter Grid.Column="1" ResizeDirection="Columns" Focusable="False" />
 
-            <Panel Grid.Column="2">
+            <StackPanel Grid.Column="2" Orientation="Vertical">
                 <Image Name="PreviewRenderTarget" VerticalAlignment="Top"></Image>
-            </Panel>
+                <TextBlock Name="SpeakerNotes" FontSize="20" Margin="10"></TextBlock>
+            </StackPanel >
         </Grid>
     </DockPanel>
 </Window>
