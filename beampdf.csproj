@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <!-- Native AOT; see https://docs.avaloniaui.net/zh-Hans/docs/deployment/native-aot -->
-  <!-- Doesn't work though due to MuPDF.NET, it fails loading native binaries -->
+  <!-- Doesn't work though due to MuPDF.NET, it throws an exception in the C++ code -->
   <!-- <PropertyGroup>
     <PublishAot>true</PublishAot>
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
@@ -31,7 +31,6 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="MuPDF.NET" Version="3.2.8-rc.7" />
-    <PackageReference Include="PDFtoImage" Version="5.1.1" />
   </ItemGroup>
 
   <ItemGroup>
