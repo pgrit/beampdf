@@ -1,5 +1,3 @@
-using Avalonia.Controls;
-
 namespace beampdf;
 
 public partial class DisplayWindow : Window
@@ -9,6 +7,6 @@ public partial class DisplayWindow : Window
         InitializeComponent();
 
         ExtendClientAreaToDecorationsHint = true;
-        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+        ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
     }
 }

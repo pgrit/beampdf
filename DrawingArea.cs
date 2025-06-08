@@ -1,10 +1,3 @@
-using System;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Media;
-using Avalonia.Media.Imaging;
-
 namespace beampdf;
 
 public class DrawingArea : Panel

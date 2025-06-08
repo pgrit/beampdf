@@ -1,7 +1,4 @@
-﻿using Avalonia;
-using System;
-
-namespace beampdf;
+﻿namespace beampdf;
 
 class Program
 {
