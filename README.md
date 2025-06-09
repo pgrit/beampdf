@@ -30,6 +30,12 @@ A simple cross-platform app to present a PDF slideshow. Based on [Avalonia](http
     - filename must be `XX-speaker-note` where XX is the slide number (page label, not "real" page)
     - content is interpreted as UTF-8 string
   - As annotations: annotations in the PDF are rendered into the presenter view only
+- Video via [libVLCSharp](https://code.videolan.org/videolan/LibVLCSharp)
+  - Embedded files in in the PDF with special filename provide video playback hints:
+    - `XX-video-FILENAME` where XX is the slide number and `FILENAME` the relative path from the `.pdf` to the video
+    - the file description must be `X,Y,W` where `X` and `Y` are the top left corner and `W` the width of the video in the `.pdf` (in points)
+  - Playback starts automatically in the fullscreen display when the slide is opened
+  - `libVLC` is an optional dependency; without it, PDFs that don't contain video can still be presented
 
 ## Screenshots
 ### The presenter view in action
@@ -51,3 +57,6 @@ To build deployable binaries
 ```
 dotnet publish -c Release
 ```
+
+For video support on Linux, see https://github.com/videolan/libvlcsharp/blob/3.x/docs/linux-setup.md
+(without libVLC, if you open a PDF with a video, beampdf will crash when trying to play it currently.)

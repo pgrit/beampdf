@@ -1,3 +1,5 @@
+using LibVLCSharp.Shared;
+
 namespace beampdf;
 
 public partial class MainWindow : Window
@@ -24,9 +26,6 @@ public partial class MainWindow : Window
         };
 
         AddHandler(DragDrop.DropEvent, HandleDrop);
-
-        // TODO transitions: fade or switch
-        // - control times, separately for pages with same label (=animations) and different labels (=transitions)
     }
 
     Point? cropA, cropB;
@@ -380,6 +379,22 @@ public partial class MainWindow : Window
             SpeakerNotes.Text = note;
         else
             SpeakerNotes.Text = "";
+
+        // If there is a video here, play it
+        if (displayWindow != null)
+        {
+            if (videos.TryGetValue(pageNumbers[curPage], out var vid))
+            {
+                double x = vid.X / openDoc[curPage].Rect.Width;
+                double y = vid.Y / openDoc[curPage].Rect.Height;
+                double w = vid.W / openDoc[curPage].Rect.Width;
+                displayWindow.PlayVideo(vid.Filename, x, y, w);
+            }
+            else
+            {
+                displayWindow.StopVideo();
+            }
+        }
     }
 
     List<int> pageNumbers = [];
@@ -432,8 +447,44 @@ public partial class MainWindow : Window
                 continue;
 
             string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
-            // TODO parse markdown
             notes.Add(slideNum, content);
+        }
+    }
+
+    Dictionary<int, (string Filename, float X, float Y, float W)> videos;
+
+    void ExtractVideos()
+    {
+        videos = [];
+
+        int num = openDoc.GetEmbfileCount();
+        for (int i = 0; i < num; ++i)
+        {
+            var info = openDoc.GetEmbfileInfo(i);
+            if (!info.FileName.Contains("-video-"))
+                continue;
+
+            var filenameSplit = info.FileName.Split("-video-");
+            if (filenameSplit.Length != 2)
+                continue;
+
+            string nr = filenameSplit[0];
+            if (!int.TryParse(nr, out int slideNum))
+                continue;
+
+            string filename = filenameSplit[1];
+
+            var box = info.Desc.Split(',');
+            if (box.Length != 3)
+                continue;
+
+            if (!float.TryParse(box[0], out float x)) continue;
+            if (!float.TryParse(box[1], out float y)) continue;
+            if (!float.TryParse(box[2], out float w)) continue;
+
+            filename = Path.Join(Path.GetDirectoryName(openDocFilename), filename);
+
+            videos.Add(slideNum, (filename, x, y, w));
         }
     }
 
@@ -452,16 +503,20 @@ public partial class MainWindow : Window
         }
     }
 
+    string openDocFilename;
+
     async Task OpenDocument(string filename)
     {
         if ((!openDoc?.IsClosed) ?? true)
             openDoc?.Close();
         openDoc = new MuPDF.NET.Document(filename);
+        openDocFilename = filename;
 
         RecentFilePicker.AddFile(filename, DateTime.Now);
 
         ResolvePageLabels();
         ExtractNotes();
+        ExtractVideos();
 
         curPage = 0;
         presentStart = null;
