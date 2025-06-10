@@ -1,5 +1,3 @@
-using LibVLCSharp.Shared;
-
 namespace beampdf;
 
 public partial class MainWindow : Window
@@ -137,7 +135,7 @@ public partial class MainWindow : Window
 
         MuPDF.NET.Rect clipRect = new(x0, y0, x1, y1);
 
-        lock(openDoc)
+        lock (openDoc)
         {
             MuPDF.NET.Pixmap pixmap = openDoc[curPage].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb",
                 alpha: false, annots: false, clip: clipRect);
@@ -202,7 +200,7 @@ public partial class MainWindow : Window
                 SystemTime.Text = DateTime.Now.ToString("HH:mm");
             });
         }
-        catch(TaskCanceledException)
+        catch (TaskCanceledException)
         {
             // Occurs if the window closed between invoking this timer and dispatching the UI call => ignore
         }
@@ -232,9 +230,9 @@ public partial class MainWindow : Window
             numPageInput = 0;
         }
 
-        if (e.Key == Key.Right)
+        if (e.Key == Key.Right || e.Key == Key.Next)
             NextSlide();
-        else if (e.Key == Key.Left)
+        else if (e.Key == Key.Left || e.Key == Key.Prior)
             PreviousSlide();
 
         // Selecting output display
@@ -335,9 +333,9 @@ public partial class MainWindow : Window
         if (curPage > 0 && !presentStart.HasValue)
             presentStart = DateTime.Now;
 
-        if (displayWindow != null)
+        if (displayWindow != null && double.IsFinite(displayWindow.Width))
         {
-            displayWindow?.RenderTarget.Source = await RenderPage(curPage, displayWindow.Width, displayWindow.Height);
+            displayWindow.RenderTarget.Source = await RenderPage(curPage, displayWindow.Width, displayWindow.Height);
         }
 
         var presenterBounds = PresenterRenderTarget.GetVisualParent().Bounds;
