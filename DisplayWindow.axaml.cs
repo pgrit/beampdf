@@ -5,8 +5,15 @@ namespace beampdf;
 
 public partial class DisplayWindow : Window
 {
-    static readonly LibVLC libvlc = new(enableDebugLogs: false);
-    readonly MediaPlayer mediaPlayer = new(libvlc);
+    static LibVLC Libvlc
+    {
+        get
+        {
+            field ??= new(enableDebugLogs: false);
+            return field;
+        }
+    }
+    MediaPlayer mediaPlayer;
 
     VideoView videoView;
 
@@ -16,18 +23,25 @@ public partial class DisplayWindow : Window
 
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
+    }
 
+    void AddVideoPlayer()
+    {
         // Doing this in XAML does not initialize the mediaPlayer correctly, so we add the control here...
+        mediaPlayer = new(Libvlc);
         videoView = new()
         {
             MediaPlayer = mediaPlayer
-        }; // TODO does this need to be recreated on screen switch? Maybe to be safe we just re-init the player for each video?
+        };
         VideoContainer.Children.Add(videoView);
     }
 
     public async void PlayVideo(string filename, double x, double y, double w)
     {
-        using var media = new Media(libvlc, filename);
+        if (videoView == null)
+            AddVideoPlayer();
+
+        using var media = new Media(Libvlc, filename);
         await media.Parse();
         var vidTrack = media.Tracks[0].Data.Video;
 
@@ -47,7 +61,7 @@ public partial class DisplayWindow : Window
 
     public void StopVideo()
     {
-        mediaPlayer.Stop();
-        videoView.IsVisible = false;
+        mediaPlayer?.Stop();
+        videoView?.IsVisible = false;
     }
 }
