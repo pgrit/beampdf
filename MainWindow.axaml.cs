@@ -517,7 +517,6 @@ public partial class MainWindow : Window
         ExtractVideos();
 
         curPage = 0;
-        presentStart = null;
         await RenderCurrentPage();
 
         PopulateImageStrip();
