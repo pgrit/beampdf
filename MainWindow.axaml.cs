@@ -344,7 +344,7 @@ public partial class MainWindow : Window
         // display preview of next page
         if (curPage + 1 < openDoc.PageCount)
         {
-            var previewBounds = PresenterRenderTarget.GetVisualParent().Bounds;
+            var previewBounds = PreviewRenderTarget.GetVisualParent().Bounds;
             PreviewRenderTarget.Source = await RenderPage(curPage + 1, previewBounds.Width, previewBounds.Height);
         }
         else
