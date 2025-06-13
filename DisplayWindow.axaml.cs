@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using LibVLCSharp.Avalonia;
 using LibVLCSharp.Shared;
 
@@ -17,12 +18,30 @@ public partial class DisplayWindow : Window
 
     VideoView videoView;
 
+    readonly Timer timer;
+
     public DisplayWindow()
     {
         InitializeComponent();
 
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
+
+        timer = new(1000.0);
+        timer.Elapsed += (_, _) => StayAwake();
+        timer.Start();
+    }
+
+    [DllImport("Kernel32.dll")]
+    static extern uint SetThreadExecutionState(uint esFlags);
+
+    /// <summary>
+    /// Notifies the OS that the screen should remain on. Currently only implemented for Windows
+    /// </summary>
+    static void StayAwake()
+    {
+        if (OperatingSystem.IsWindows())
+            SetThreadExecutionState(0x00000002 | 0x00000001); // ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED
     }
 
     void AddVideoPlayer()
