@@ -81,6 +81,7 @@ public partial class DisplayWindow : Window
     public void StopVideo()
     {
         mediaPlayer?.Stop();
-        videoView?.IsVisible = false;
+        if (videoView != null)
+            videoView.IsVisible = false;
     }
 }

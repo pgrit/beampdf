@@ -11,7 +11,8 @@ public class DrawingArea : Panel
 
         image = new(new(resX, resY));
         viewer.Source = image;
-        SyncTarget?.Source = image;
+        if (SyncTarget != null)
+            SyncTarget.Source = image;
     }
 
     int resX = 3840, resY = 2160;
@@ -98,7 +99,8 @@ public class DrawingArea : Panel
         resY = (int)(aspect * resX);
         image = new(new(resX, resY));
         viewer.Source = image;
-        SyncTarget?.Source = image;
+        if (SyncTarget != null)
+            SyncTarget.Source = image;
     }
 
     public Image SyncTarget
@@ -107,7 +109,8 @@ public class DrawingArea : Panel
         set
         {
             field = value;
-            SyncTarget?.PointerMoved += (_, evt) =>
+            if (field == null) return;
+            field.PointerMoved += (_, evt) =>
             {
                 HandleDraw(evt, SyncTarget);
             };

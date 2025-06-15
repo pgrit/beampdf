@@ -142,7 +142,8 @@ public partial class MainWindow : Window
             var bmp = new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque, (nint)pixmap.SamplesPtr,
                 new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
 
-            displayWindow?.RenderTarget.Source = bmp;
+            if (displayWindow != null)
+                displayWindow.RenderTarget.Source = bmp;
             PresenterRenderTarget.Source = bmp;
         }
     }
