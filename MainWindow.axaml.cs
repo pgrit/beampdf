@@ -50,6 +50,7 @@ public partial class MainWindow : Window
             CropMarker.IsVisible = true;
         }
     }
+
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         var point = e.GetCurrentPoint(PresenterPanel);
