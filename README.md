@@ -58,8 +58,21 @@ To build deployable binaries
 dotnet publish -c Release
 ```
 
-For video support on Linux, see https://github.com/videolan/libvlcsharp/blob/3.x/docs/linux-setup.md
-(without libVLC, if you open a PDF with a video, beampdf will crash when trying to play it currently.)
+For video support on Linux, install libvlc. Something like
+```sh
+# Debian / Ubuntu / etc
+sudo apt install vlc libvlc-dev
+# Fedora etc
+sudo dnf install vlc vlc-devel
+```
+(see https://github.com/videolan/libvlcsharp/blob/3.x/docs/linux-setup.md)
+Without libVLC, if you open a PDF with a video, beampdf will crash when trying to play it currently.
+
+### Preventing the screen from turning off
+On Windows, the screen is kept awake while the DisplayWindow is open (via WinAPI). On Linux, similar behavior can be achieved by running via 
+```sh
+systemd-inhibit beampdf
+```
 
 ## Typst support for video and notes
 
