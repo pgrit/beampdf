@@ -46,7 +46,7 @@ A simple cross-platform app to present a PDF slideshow. Based on [Avalonia](http
 
 ## Using beampdf
 
-Currently, no binaries are provided. Only tested on Windows, but should run on any platform supported by Avalonia and MuPDF.NET.
+Currently, no binaries are provided. Only tested on Windows and Linux, but should run on any platform supported by Avalonia and MuPDF.NET.
 
 To run from source, install the [.NET SDK](https://dotnet.microsoft.com/en-us/download) and run
 ```
@@ -69,7 +69,7 @@ sudo dnf install vlc vlc-devel
 Without libVLC, if you open a PDF with a video, beampdf will crash when trying to play it currently.
 
 ### Preventing the screen from turning off
-On Windows, the screen is kept awake while the DisplayWindow is open (via WinAPI). On Linux, similar behavior can be achieved by running via 
+On Windows, the screen is kept awake while the DisplayWindow is open (via WinAPI). On Linux, similar behavior can be achieved by running via
 ```sh
 systemd-inhibit beampdf
 ```
