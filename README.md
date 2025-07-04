@@ -76,33 +76,5 @@ systemd-inhibit beampdf
 
 ## Typst support for video and notes
 
-Here are the utility functions that I use to output speaker notes and video links in [Typst](https://github.com/typst/typst)
+See [beampdf.typ](./Test/beampdf.typ) for the Typst code to output speaker notes and video links in the PDF. An example for a full slide can be found in the [Test](./Test/) directory.
 
-```
-#let speaker-note(text) = only(1, context {
-    let page-idx = counter(page).get().at(0)
-    let lbl = str(page-idx) + "-speaker-note"
-    pdf.embed(
-      lbl,
-      bytes(text),
-      description: lbl,
-      mime-type: "text/plain"
-    )
-  })
-
-#let video(static, filename, width: 100%, ..args) = block(layout(imgsize => {
-  // Track the image placement info as an embedded file
-  let pos = here().position()
-  let page-idx = counter(page).get().at(0)
-  let lbl = str(page-idx) + "-video-" + filename
-  pdf.embed(
-    lbl, // We _could_ embed the acutal video here, too. But nicer for sharing slides if we don't.
-    bytes(lbl),
-    description: str(pos.x.pt()) + "," + str(pos.y.pt()) + "," + str(imgsize.width.pt()),
-    mime-type: "text/plain"
-  )
-  // Display static preview and the filename of the video for manual playback in handouts
-  image(static, ..args)
-  place(dy: -1.5em - 8pt, dx: 1em, box(link(filename, filename), fill: white, inset: 8pt))
-}), width: width)
-```

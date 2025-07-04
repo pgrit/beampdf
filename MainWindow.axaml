@@ -37,7 +37,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Grid ColumnDefinitions="*, 0.5, 600">
+        <Grid ColumnDefinitions="2*, 0.5, 1*">
             <Panel Grid.Column="0" Name="PresenterPanel">
                 <Image Name="PresenterRenderTarget" VerticalAlignment="Top"></Image>
                 <beampdf:DrawingArea Name="DrawingArea" VerticalAlignment="Top"></beampdf:DrawingArea>
@@ -50,7 +50,7 @@
 
             <StackPanel Grid.Column="2" Orientation="Vertical">
                 <Image Name="PreviewRenderTarget" VerticalAlignment="Top"></Image>
-                <TextBlock Name="SpeakerNotes" FontSize="20" Margin="10"></TextBlock>
+                <TextBlock Name="SpeakerNotes" FontSize="20" Margin="10" TextWrapping="Wrap"></TextBlock>
             </StackPanel >
         </Grid>
     </DockPanel>
