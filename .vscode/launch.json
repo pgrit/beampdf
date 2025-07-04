@@ -1,0 +1,13 @@
+{
+   "version": "0.2.0",
+   "configurations": [
+        {
+            "name": "beampdf",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/Debug/net9.0/beampdf.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
