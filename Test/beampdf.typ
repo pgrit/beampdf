@@ -18,16 +18,20 @@
 #let embed-speaker-notes() = context {
   // Concatenate video information into a list of strings of form:
   // [page]*[slide]*[note]
-  let list-str = query(<speaker-note>).map(it => {
-    str(it.location().page()) + "*" + it.value + "\n"
-  }).join()
+  let list-str = query(<speaker-note>)
+    .map(it => {
+      str(it.location().page()) + "*" + it.value + "\n"
+    })
+    .join()
 
-  pdf.embed(
-    "speaker-note-list",
-    bytes(list-str),
-    description: "List of per-slide speaker notes",
-    mime-type: "text/plain"
-  )
+  if list-str != none {
+    pdf.embed(
+      "speaker-note-list",
+      bytes(list-str),
+      description: "speaker-note-list",
+      mime-type: "text/plain",
+    )
+  }
 }
 
 /// Adds a video
@@ -41,28 +45,44 @@
 /// - width: Size of the video relative to the parent
 ///
 /// - loop: Set to true to add a hint that the video should loop during playback
-#let video(static, filename, width: 100%, loop: false, ..args) = block(layout(imgsize => {
-  let pos = here().position()
-  let size-hint = str(pos.x.pt()) + "," + str(pos.y.pt()) + "," + str(imgsize.width.pt())
+#let video(static, filename, width, loop: false, ..args) = block(
+  layout(imgsize => {
+    let pos = here().position()
+    let size-hint = str(pos.x.pt()) + "," + str(pos.y.pt()) + "," + str(imgsize.width.pt())
 
-  // Display static preview and the filename of the video for manual playback in handouts
-  image(static, ..args)
-  [#metadata((filename, loop, size-hint)) <video-placeholder>]
-  place(dy: -1.5em - 8pt, dx: 1em, box(link(filename, filename), fill: white, inset: 8pt))
-}), width: width)
+    // Display static preview and the filename of the video for manual playback in handouts
+    image(static, width: 100%, ..args)
+    [#metadata((filename, loop, size-hint)) <video-placeholder>]
+    place(dy: -1.5em - 8pt, dx: 1em, box(link(filename, filename), fill: white, inset: 8pt))
+  }),
+  width: width,
+)
 
 /// Add the list of videos and their positions to an embedded file in the output pdf
 #let embed-video-list() = context {
   // Concatenate video information into a list of strings of form:
   // [slide]*[isLooping]*[x],[y],[w]*[filename]
-  let list-str = query(<video-placeholder>).map(it => {
-    str(it.location().page()) + "*" + if it.value.at(1) { "true" } else { "false" } + "*" + it.value.at(2) + "*" + it.value.at(0) + "\n"
-  }).join()
+  let list-str = query(<video-placeholder>)
+    .map(it => {
+      (
+        str(it.location().page())
+          + "*"
+          + if it.value.at(1) { "true" } else { "false" }
+          + "*"
+          + it.value.at(2)
+          + "*"
+          + it.value.at(0)
+          + "\n"
+      )
+    })
+    .join()
 
-  pdf.embed(
-    "video-list",
-    bytes(list-str),
-    description: "List of video overlays",
-    mime-type: "text/plain"
-  )
+  if list-str != none {
+    pdf.embed(
+      "video-list",
+      bytes(list-str),
+      description: "video-list",
+      mime-type: "text/plain",
+    )
+  }
 }

@@ -442,7 +442,7 @@ public partial class MainWindow : Window
         for (int i = 0; i < num; ++i)
         {
             var info = openDoc.GetEmbfileInfo(i);
-            if (info.FileName != "speaker-note-list")
+            if (info.Desc != "speaker-note-list")
                 continue;
 
             string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
@@ -471,7 +471,7 @@ public partial class MainWindow : Window
         for (int i = 0; i < num; ++i)
         {
             var info = openDoc.GetEmbfileInfo(i);
-            if (info.FileName != "video-list")
+            if (info.Desc != "video-list")
                 continue;
 
             string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
