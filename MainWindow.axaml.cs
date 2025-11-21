@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace beampdf;
 
 public partial class MainWindow : Window
@@ -434,6 +437,14 @@ public partial class MainWindow : Window
 
     Dictionary<int, string> notes;
 
+    struct SpeakerNote {
+        [JsonPropertyName("page")]
+        public int Page { get; set; }
+
+        [JsonPropertyName("note")]
+        public string Note { get; set; }
+    }
+
     void ExtractNotes()
     {
         notes = [];
@@ -446,17 +457,9 @@ public partial class MainWindow : Window
                 continue;
 
             string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
-            using StringReader reader = new(content);
-            string line;
-            while ((line = reader.ReadLine()) != null)
-            {
-                int splitIdx = line.IndexOf('*');
-                if (!int.TryParse(line[..splitIdx], out int slideNum))
-                    continue;
-
-                string txt = line[(splitIdx+1)..];
-                txt = txt.Replace('\\', '\n');
-                notes.Add(slideNum, txt);
+            var noteList = JsonSerializer.Deserialize<SpeakerNote[]>(content);
+            foreach (var n in noteList) {
+                notes.Add(n.Page, n.Note);
             }
         }
     }

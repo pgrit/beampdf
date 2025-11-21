@@ -9,7 +9,6 @@
   } else {
     text
   }
-  if raw-text.contains("\n") { panic("Speaker notes cannot contain newlines, use \\ instead") }
   // Add a metadata block (invisible) with a label so we can locate this note
   [#metadata(raw-text)<speaker-note>]
 }
@@ -18,14 +17,16 @@
 #let embed-speaker-notes() = context {
   // Concatenate video information into a list of strings of form:
   // [page]*[slide]*[note]
-  let list-str = query(<speaker-note>)
+  let list-str = "[" + query(<speaker-note>)
     .map(it => {
-      str(it.location().page()) + "*" + it.value + "\n"
+      let page = "\"page\":" + str(it.location().page())
+      let note = "\"note\":\"" + it.value.replace("\n", "\\n") + "\""
+      "{" + page + "," + note + "}"
     })
-    .join()
+    .join(",\n") + "]"
 
   if list-str != none {
-    pdf.embed(
+    pdf.attach(
       "speaker-note-list",
       bytes(list-str),
       description: "speaker-note-list",
@@ -78,7 +79,7 @@
     .join()
 
   if list-str != none {
-    pdf.embed(
+    pdf.attach(
       "video-list",
       bytes(list-str),
       description: "video-list",

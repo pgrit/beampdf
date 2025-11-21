@@ -29,25 +29,27 @@
 #only(1, speaker-note[Deliver a great pun])
 #pause
 - Stay and find out!
-#only(2, speaker-note("Second note on the \\ same slide"))
+#only(2, speaker-note(```
+Second note on the
+same slide```))
 
 == Videos are everywhere
 
 // Videos and notes are not supported by touying's pause
-#only(1, place(top + right, video("beampdf-logo-static.png", "beampdf-logo.mkv", width: 40%, loop: false)))
+#only(1, place(top + right, video("beampdf-logo-static.png", "beampdf-logo.mkv", 40%, loop: false)))
 - First, we play it once
 #pause
-#only(2, place(top + right, video("beampdf-logo-static.png", "beampdf-logo.mkv", width: 40%, loop: true)))
+#only(2, place(top + right, video("beampdf-logo-static.png", "beampdf-logo.mkv", 40%, loop: true)))
 - Then, we play it forever
 #pause
 That's enough videos for today!
 
-#speaker-note("First video should be looping now, then the second plays once")
+#speaker-note("First video should play once, then the second loops forever")
 
 == A video that goes on and on
 
 
-#only("2-", place(top + right, video("beampdf-logo-static.png", "beampdf-logo.mkv", width: 40%, loop: true)))
+#only("2-", place(top + right, video("beampdf-logo-static.png", "beampdf-logo.mkv", 40%, loop: true)))
 - We are
 #pause
 - updating
