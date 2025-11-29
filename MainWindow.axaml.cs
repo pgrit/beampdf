@@ -296,7 +296,14 @@ public partial class MainWindow : Window
         }
 
         displayWindow.Position = screen.WorkingArea.Position;
-        displayWindow.WindowState = WindowState.FullScreen;
+
+        // Only toggle fullscreen once we're sure the Window is positioned
+        // This is required on Linux, without it fullscreen just uses a
+        // random screen
+        displayWindow.Resized += (_, _) =>
+        {
+            displayWindow.WindowState = WindowState.FullScreen;
+        };
 
         DrawingArea.SyncTarget = displayWindow?.Overlay;
 
