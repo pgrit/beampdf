@@ -86,7 +86,7 @@ public partial class RecentFilePicker : Window
 
     async void Populate()
     {
-        var sorted = entries.OrderBy(v => v.Time);
+        var sorted = entries.OrderBy(v => v.Time).Where(v => Path.Exists(v.Name));
         foreach (var e in sorted)
         {
             var entry = e; // for the lambda capture
