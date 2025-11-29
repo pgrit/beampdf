@@ -154,11 +154,12 @@ public partial class MainWindow : Window
 
     private void HandleDrop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetFiles() == null)
+        var files = e.DataTransfer.TryGetFiles();
+        if (files == null)
             return;
 
         // Load the first file that is valid
-        foreach (var file in e.Data.GetFiles())
+        foreach (var file in files)
         {
             if (File.Exists(file.Path.LocalPath))
             {

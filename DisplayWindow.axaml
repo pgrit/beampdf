@@ -11,7 +11,5 @@
         <Image Name="RenderTarget"></Image>
         <Image Name="Overlay"></Image>
         <Canvas Name="VideoContainer"></Canvas>
-
-        <!-- <vlc:VideoView Name="VideoView" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"></vlc:VideoView> -->
     </Panel>
 </Window>
