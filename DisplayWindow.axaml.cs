@@ -1,5 +1,5 @@
-using System.Threading;
 using System.Runtime.InteropServices;
+using System.Threading;
 using LibVLCSharp.Avalonia;
 using LibVLCSharp.Shared;
 
@@ -52,20 +52,19 @@ public partial class DisplayWindow : Window
     {
         // Doing this in XAML does not initialize the mediaPlayer correctly, so we add the control here...
         mediaPlayer = new(Libvlc);
-        videoView = new()
-        {
-            MediaPlayer = mediaPlayer,
-        };
+        videoView = new() { MediaPlayer = mediaPlayer };
         VideoContainer.Children.Add(videoView);
 
         mediaPlayer.EndReached += (_, _) =>
         {
             if (isLooping)
             {
-                ThreadPool.QueueUserWorkItem((_) =>
-                {
-                    RestartVideo();
-                });
+                ThreadPool.QueueUserWorkItem(
+                    (_) =>
+                    {
+                        RestartVideo();
+                    }
+                );
             }
             else // if it's not a loop, we are no longer playing this file
                 curFilename = null;
@@ -88,7 +87,6 @@ public partial class DisplayWindow : Window
         await media.Parse();
         var vidTrack = media.Tracks[0].Data.Video;
 
-        videoView.IsVisible = true;
 
         // Position the video view
         x = RenderTarget.Bounds.Left + x * RenderTarget.Bounds.Width;
@@ -98,6 +96,16 @@ public partial class DisplayWindow : Window
         videoView.Height = vidTrack.Height / (double)vidTrack.Width * w;
         Canvas.SetLeft(videoView, x);
         Canvas.SetTop(videoView, y);
+
+        // Hide the media player until it actually starts playing
+        // The "Playing" event fires the moment we call Play()
+        // So we use PositionChanged instead, which fires once the first frame is shown
+        videoView.IsVisible = false;
+        mediaPlayer.PositionChanged += (_, _) =>
+            Dispatcher.UIThread.Invoke(() =>
+            {
+                videoView.IsVisible = true;
+            });
 
         mediaPlayer.Play(media);
     }
