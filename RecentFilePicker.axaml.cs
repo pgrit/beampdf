@@ -6,7 +6,8 @@ public partial class RecentFilePicker : Window
     {
         var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         string filename = Path.Join(appdata, "beampdf", "recent.csv");
-        if (!File.Exists(filename)) {
+        if (!File.Exists(filename))
+        {
             Directory.CreateDirectory(Path.Join(appdata, "beampdf"));
             File.WriteAllText(filename, "");
         }
@@ -23,7 +24,7 @@ public partial class RecentFilePicker : Window
             TextFieldType = Microsoft.VisualBasic.FileIO.FieldType.Delimited,
             TrimWhiteSpace = true,
             HasFieldsEnclosedInQuotes = true,
-            Delimiters = [","]
+            Delimiters = [","],
         };
 
         // Read all data lines
@@ -49,7 +50,7 @@ public partial class RecentFilePicker : Window
         else
         {
             entries.Add((time, name));
-            File.AppendAllLines(GetRecentFile().FullName, [ $"{time},{name}" ]);
+            File.AppendAllLines(GetRecentFile().FullName, [$"{time},{name}"]);
         }
     }
 
@@ -65,10 +66,21 @@ public partial class RecentFilePicker : Window
 
         var result = await Task.Run(() =>
         {
-            MuPDF.NET.Pixmap pixmap = openDoc[0].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb",
-                alpha: false, annots: false);
-            return new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque, (nint)pixmap.SamplesPtr,
-                new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
+            MuPDF.NET.Pixmap pixmap = openDoc[0]
+                .GetPixmap(
+                    matrix: new MuPDF.NET.Matrix(zoom, zoom),
+                    colorSpace: "rgb",
+                    alpha: false,
+                    annots: false
+                );
+            return new Bitmap(
+                PixelFormats.Rgb24,
+                AlphaFormat.Opaque,
+                (nint)pixmap.SamplesPtr,
+                new(pixmap.W, pixmap.H),
+                new(pixmap.Xres, pixmap.Yres),
+                pixmap.W * 3
+            );
         });
 
         openDoc.Close();
@@ -80,6 +92,11 @@ public partial class RecentFilePicker : Window
         InitializeComponent();
 
         Populate();
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e) {
+        if (e.Key == Key.Escape)
+            Close();
     }
 
     public string SelectedFilename { get; private set; }
@@ -105,6 +122,16 @@ public partial class RecentFilePicker : Window
                 Source = bmp,
                 Cursor = new Cursor(StandardCursorType.Hand),
             };
+            var btn = new Button()
+            {
+                Focusable = true,
+                Width = thumbnailSize,
+                Content = img,
+            };
+            // Workaround for Avalonia focus weirdness:
+            // Dialog will only get focus if we force focus on an InputElement
+            // And we cannot do that before adding to the visual tree is doen.
+            btn.AttachedToVisualTree += delegate { btn.Focus(); };
 
             ToolTip.SetTip(txt, entry.Name);
             ToolTip.SetTip(img, entry.Name);
@@ -113,17 +140,13 @@ public partial class RecentFilePicker : Window
                 SelectedFilename = entry.Name;
                 Close();
             }
-            img.PointerReleased += (_,_) => open();
-            txt.PointerReleased += (_,_) => open();
+            btn.Click += delegate { open(); };
 
-            StackPanel stack = new()
-            {
-                Margin = new(30)
-            };
-            stack.Children.Add(img);
+            StackPanel stack = new() { Margin = new(30) };
+            stack.Children.Add(btn);
             stack.Children.Add(txt);
             Container.Children.Add(stack);
-
         }
     }
 }
+
