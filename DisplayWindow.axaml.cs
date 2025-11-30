@@ -1,9 +1,6 @@
-using System.Runtime.InteropServices;
 using System.Threading;
-using Desktop.DBus;
 using LibVLCSharp.Avalonia;
 using LibVLCSharp.Shared;
-using Tmds.DBus.Protocol;
 
 namespace beampdf;
 
@@ -21,8 +18,6 @@ public partial class DisplayWindow : Window
 
     VideoView videoView;
 
-    readonly System.Timers.Timer timer;
-
     bool isLooping = false;
     string curFilename;
 
@@ -33,37 +28,7 @@ public partial class DisplayWindow : Window
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
 
-        // Windows requires us to repeatedly call a function to avoid sleep
-        timer = new(1000.0);
-        timer.Elapsed += (_, _) => StayAwake();
-        timer.Start();
-
-        // On Linux, we inhibit sleep via a desktop portal (so it also works in a sandboxed environment)
-        if (OperatingSystem.IsLinux())
-        {
-            Connection connection = new(Address.Session);
-            Task.Run(async () =>
-            {
-                await connection.ConnectAsync();
-                DesktopService desktop = new(connection, "org.freedesktop.portal.Desktop");
-                var inhibit = desktop.CreateInhibit("/org/freedesktop/portal/desktop");
-                await inhibit.InhibitAsync("", 4 | 8, new() { ["reason"] = "Presenting slides"});
-            });
-        }
-
-        // TODO OSX will snooze happily
-    }
-
-    [DllImport("Kernel32.dll")]
-    static extern uint SetThreadExecutionState(uint esFlags);
-
-    /// <summary>
-    /// Notifies the OS that the screen should remain on. Currently only implemented for Windows
-    /// </summary>
-    static void StayAwake()
-    {
-        if (OperatingSystem.IsWindows())
-            SetThreadExecutionState(0x00000002 | 0x00000001); // ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED
+        SleepInhibitor.Inhibit();
     }
 
     void AddVideoPlayer()
