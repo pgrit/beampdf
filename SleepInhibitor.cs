@@ -11,6 +11,8 @@ public static class SleepInhibitor
 
     static System.Timers.Timer timer;
 
+    static bool active;
+
     static void InhibitWindows()
     {
         // Windows requires us to repeatedly call a function to avoid sleep
@@ -38,10 +40,15 @@ public static class SleepInhibitor
 
     public static void Inhibit()
     {
+        if (active) return;
+
         if (OperatingSystem.IsWindows())
             InhibitWindows();
         else if (OperatingSystem.IsLinux())
             InhibitLinux();
+
         // TODO OSX will snooze happily
+
+        active = true;
     }
 }
