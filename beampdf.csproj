@@ -20,7 +20,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="LibVLCSharp.Avalonia" Version="3.9.4" />
-    <PackageReference Include="MuPDF.NET" Version="3.2.12" />
+    <PackageReference Include="MuPDF.NET" Version="3.2.11" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.2" />
 
     <PackageReference Condition="$([MSBuild]::IsOsPlatform('Windows'))" Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
