@@ -1,7 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Threading;
+using Desktop.DBus;
 using LibVLCSharp.Avalonia;
 using LibVLCSharp.Shared;
+using Tmds.DBus.Protocol;
 
 namespace beampdf;
 
@@ -31,9 +33,25 @@ public partial class DisplayWindow : Window
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
 
+        // Windows requires us to repeatedly call a function to avoid sleep
         timer = new(1000.0);
         timer.Elapsed += (_, _) => StayAwake();
         timer.Start();
+
+        // On Linux, we inhibit sleep via a desktop portal (so it also works in a sandboxed environment)
+        if (OperatingSystem.IsLinux())
+        {
+            Connection connection = new(Address.Session);
+            Task.Run(async () =>
+            {
+                await connection.ConnectAsync();
+                DesktopService desktop = new(connection, "org.freedesktop.portal.Desktop");
+                var inhibit = desktop.CreateInhibit("/org/freedesktop/portal/desktop");
+                await inhibit.InhibitAsync("", 4 | 8, new() { ["reason"] = "Presenting slides"});
+            });
+        }
+
+        // TODO OSX will snooze happily
     }
 
     [DllImport("Kernel32.dll")]
