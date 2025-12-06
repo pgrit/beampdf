@@ -87,7 +87,7 @@ public partial class DisplayWindow : Window
         mediaPlayer.PositionChanged += (_, _) =>
             Dispatcher.UIThread.Invoke(() =>
             {
-                videoView.IsVisible = true;
+                videoView?.IsVisible = true;
             });
 
         mediaPlayer.Play(media);

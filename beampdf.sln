@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "beampdf", "beampdf.csproj", "{77033040-34C1-4CC4-A875-6D2162BE8B9E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "beampdf", "beampdf/beampdf.csproj", "{77033040-34C1-4CC4-A875-6D2162BE8B9E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,12 +1,9 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
 namespace beampdf;
 
 public partial class MainWindow : Window
 {
     DisplayWindow displayWindow;
-
+    PdfSlide openDoc;
     Timer timer;
 
     public MainWindow()
@@ -21,15 +18,19 @@ public partial class MainWindow : Window
         UpdateTime();
 
         // Horizontally scroll the thumbnails with the mouse wheel
-        SlideStripScrollViewer.PointerWheelChanged += (sender, e) => {
+        SlideStripScrollViewer.PointerWheelChanged += (sender, e) =>
+        {
             var oldX = SlideStripScrollViewer.Offset.X;
-            SlideStripScrollViewer.Offset = SlideStripScrollViewer.Offset.WithX(oldX - 96 * e.Delta.Y);
+            SlideStripScrollViewer.Offset = SlideStripScrollViewer.Offset.WithX(
+                oldX - 96 * e.Delta.Y
+            );
         };
 
         AddHandler(DragDrop.DropEvent, HandleDrop);
     }
 
-    Point? cropA, cropB;
+    Point? cropA,
+        cropB;
     bool isCropUpdating;
 
     void UpdateCrop()
@@ -58,8 +59,10 @@ public partial class MainWindow : Window
     {
         var point = e.GetCurrentPoint(PresenterPanel);
 
-        if (!point.Properties.IsRightButtonPressed &&
-            !(point.Properties.IsLeftButtonPressed && e.KeyModifiers == KeyModifiers.Control))
+        if (
+            !point.Properties.IsRightButtonPressed
+            && !(point.Properties.IsLeftButtonPressed && e.KeyModifiers == KeyModifiers.Control)
+        )
         {
             if (isCropUpdating)
             {
@@ -85,8 +88,11 @@ public partial class MainWindow : Window
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
-        if (e.InitialPressMouseButton == MouseButton.Right ||
-            e.InitialPressMouseButton == MouseButton.Left && e.KeyModifiers == KeyModifiers.Control)
+        if (
+            e.InitialPressMouseButton == MouseButton.Right
+            || e.InitialPressMouseButton == MouseButton.Left
+                && e.KeyModifiers == KeyModifiers.Control
+        )
         {
             if (cropB == null || cropA == null)
             {
@@ -101,10 +107,14 @@ public partial class MainWindow : Window
             }
             else
             {
-                var uA = (cropA.Value.X - MarkerCanvas.Bounds.Left) / MarkerCanvas.Bounds.Size.Width;
-                var uB = (cropB.Value.X - MarkerCanvas.Bounds.Left) / MarkerCanvas.Bounds.Size.Width;
-                var vA = (cropA.Value.Y - MarkerCanvas.Bounds.Top) / MarkerCanvas.Bounds.Size.Height;
-                var vB = (cropB.Value.Y - MarkerCanvas.Bounds.Top) / MarkerCanvas.Bounds.Size.Height;
+                var uA =
+                    (cropA.Value.X - MarkerCanvas.Bounds.Left) / MarkerCanvas.Bounds.Size.Width;
+                var uB =
+                    (cropB.Value.X - MarkerCanvas.Bounds.Left) / MarkerCanvas.Bounds.Size.Width;
+                var vA =
+                    (cropA.Value.Y - MarkerCanvas.Bounds.Top) / MarkerCanvas.Bounds.Size.Height;
+                var vB =
+                    (cropB.Value.Y - MarkerCanvas.Bounds.Top) / MarkerCanvas.Bounds.Size.Height;
                 var uMin = Math.Min(uA, uB);
                 var vMin = Math.Min(vA, vB);
                 var uMax = Math.Max(uA, uB);
@@ -119,37 +129,40 @@ public partial class MainWindow : Window
 
     private void ShowCrop(double uMin, double vMin, double uMax, double vMax)
     {
-        if (openDoc == null) return;
+        if (openDoc == null)
+            return;
 
+        // Map given relative position to page coordinate
         float x0 = (float)(openDoc[curPage].Rect.X0 + uMin * openDoc[curPage].Rect.Width);
         float x1 = (float)(openDoc[curPage].Rect.X0 + uMax * openDoc[curPage].Rect.Width);
         float y0 = (float)(openDoc[curPage].Rect.Y0 + vMin * openDoc[curPage].Rect.Height);
         float y1 = (float)(openDoc[curPage].Rect.Y0 + vMax * openDoc[curPage].Rect.Height);
 
-        float yscale = (y1 - y0) / openDoc[curPage].Rect.Height;
-        float xscale = (x1 - x0) / openDoc[curPage].Rect.Width;
-
         var presenterBounds = PresenterRenderTarget.GetVisualParent().Bounds;
         var w = presenterBounds.Width;
         var h = presenterBounds.Height;
 
-        float zoomX = (float)(w * VisualRoot.RenderScaling / xscale) / openDoc[curPage].Rect.Width;
-        float zoomY = (float)(h * VisualRoot.RenderScaling / yscale) / openDoc[curPage].Rect.Height;
-        float zoom = float.Min(zoomX, zoomY);
-
-        MuPDF.NET.Rect clipRect = new(x0, y0, x1, y1);
-
-        lock (openDoc)
+        if (displayWindow != null && double.IsFinite(displayWindow.Width))
         {
-            MuPDF.NET.Pixmap pixmap = openDoc[curPage].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb",
-                alpha: false, annots: false, clip: clipRect);
-            var bmp = new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque, (nint)pixmap.SamplesPtr,
-                new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
-
-            if (displayWindow != null)
-                displayWindow.RenderTarget.Source = bmp;
-            PresenterRenderTarget.Source = bmp;
+            w = displayWindow.Width;
+            h = displayWindow.Height;
         }
+        System.Console.WriteLine(w);
+        System.Console.WriteLine(h);
+
+        var bmpT = openDoc.RenderPage(
+            curPage,
+            new(x0, y0, x1, y1),
+            presenterBounds.Width,
+            presenterBounds.Height,
+            VisualRoot.RenderScaling
+        );
+        bmpT.Wait();
+        var bmp = bmpT.Result;
+
+        if (displayWindow != null)
+            displayWindow.RenderTarget.Source = bmp;
+        PresenterRenderTarget.Source = bmp;
     }
 
     private void HandleDrop(object sender, DragEventArgs e)
@@ -224,7 +237,7 @@ public partial class MainWindow : Window
         }
         else if (numPageInput > 0 && e.Key == Key.Enter)
         {
-            curPage = pageNumbers.FindLastIndex(idx => idx == pageInput);
+            curPage = openDoc.GetLastPageOfSlide(pageInput);
 
             _ = RenderCurrentPage();
             pageInput = 0;
@@ -311,14 +324,13 @@ public partial class MainWindow : Window
         // Toggling fullscreen activates the window, we undo that to retain focus
         Activate();
 
-        displayWindow.Resized += (_, args) => {
+        displayWindow.Resized += (_, args) =>
+        {
             _ = RenderCurrentPage();
         };
         _ = RenderCurrentPage();
     }
 
-    MuPDF.NET.Document openDoc;
-    List<MuPDF.NET.Label> pageLabels;
     int curPage = 0;
 
     void NextSlide()
@@ -330,7 +342,8 @@ public partial class MainWindow : Window
     void PreviousSlide()
     {
         curPage--;
-        if (curPage < 0) curPage = 0;
+        if (curPage < 0)
+            curPage = 0;
         _ = RenderCurrentPage();
     }
 
@@ -343,25 +356,44 @@ public partial class MainWindow : Window
         if (openDoc == null)
             return;
 
-        if (curPage >= openDoc.PageCount)
-            curPage = openDoc.PageCount - 1;
+        if (curPage >= openDoc.NumPages)
+            curPage = openDoc.NumPages - 1;
 
         if (curPage > 0 && !presentStart.HasValue)
             presentStart = DateTime.Now;
 
         if (displayWindow != null && double.IsFinite(displayWindow.Width))
         {
-            displayWindow.RenderTarget.Source = await RenderPage(curPage, displayWindow.Width, displayWindow.Height);
+            displayWindow.RenderTarget.Source = await openDoc.RenderPage(
+                curPage,
+                null,
+                displayWindow.Width,
+                displayWindow.Height,
+                VisualRoot.RenderScaling
+            );
         }
 
         var presenterBounds = PresenterRenderTarget.GetVisualParent().Bounds;
-        PresenterRenderTarget.Source = await RenderPage(curPage, presenterBounds.Width, presenterBounds.Height, true);
+        PresenterRenderTarget.Source = await openDoc.RenderPage(
+            curPage,
+            null,
+            presenterBounds.Width,
+            presenterBounds.Height,
+            VisualRoot.RenderScaling,
+            true
+        );
 
         // display preview of next page
-        if (curPage + 1 < openDoc.PageCount)
+        if (curPage + 1 < openDoc.NumPages)
         {
             var previewBounds = PreviewRenderTarget.GetVisualParent().Bounds;
-            PreviewRenderTarget.Source = await RenderPage(curPage + 1, previewBounds.Width, previewBounds.Height);
+            PreviewRenderTarget.Source = await openDoc.RenderPage(
+                curPage + 1,
+                null,
+                previewBounds.Width,
+                previewBounds.Height,
+                VisualRoot.RenderScaling
+            );
         }
         else
         {
@@ -389,125 +421,24 @@ public partial class MainWindow : Window
         lastPage = curPage;
 
         // Display speaker notes
-        if (notes.TryGetValue(curPage + 1, out string note))
-            SpeakerNotes.Text = note;
-        else
-            SpeakerNotes.Text = "";
+        SpeakerNotes.Text = openDoc.TryGetSpeakerNote(curPage);
 
         // If there is a video here, play it
         if (displayWindow != null)
         {
-            if (videos.TryGetValue(curPage + 1, out var vid))
+            var vid = openDoc.TryGetVideo(curPage);
+            if (vid.HasValue)
             {
-                double x = vid.X / openDoc[curPage].Rect.Width;
-                double y = vid.Y / openDoc[curPage].Rect.Height;
-                double w = vid.W / openDoc[curPage].Rect.Width;
-                displayWindow.PlayVideo(vid.Filename, x, y, w, vid.IsLoop);
+                double x = vid.Value.X / openDoc[curPage].Rect.Width;
+                double y = vid.Value.Y / openDoc[curPage].Rect.Height;
+                double w = vid.Value.W / openDoc[curPage].Rect.Width;
+                displayWindow.PlayVideo(vid.Value.Filename, x, y, w, vid.Value.IsLoop);
             }
             else
             {
                 displayWindow.StopVideo();
             }
         }
-    }
-
-    List<int> pageNumbers = [];
-
-    void ResolvePageLabels()
-    {
-        pageLabels = openDoc.GetPageLabels();
-
-        if (pageLabels.Count == 0)
-        {
-            pageNumbers = [];
-            for (int i = 0; i < openDoc.PageCount; ++i)
-                pageNumbers.Add(i + 1);
-            return;
-        }
-
-        // TODO not sure if sorting is required or already guaranteed...
-        var sortedLabels = pageLabels.OrderBy(lbl => lbl.StartPage).ToList();
-        int nextLabel = 0;
-
-        pageNumbers = [];
-        int p = 1;
-        for (int i = 0; i < openDoc.PageCount; ++i)
-        {
-            if (nextLabel < sortedLabels.Count && i == sortedLabels[nextLabel].StartPage)
-            {
-                p = sortedLabels[nextLabel].FirstPageNum;
-                nextLabel++;
-            }
-
-            pageNumbers.Add(p++);
-        }
-    }
-
-    Dictionary<int, string> notes;
-
-    struct SpeakerNote {
-        [JsonPropertyName("page")]
-        public int Page { get; set; }
-
-        [JsonPropertyName("note")]
-        public string Note { get; set; }
-    }
-
-    void ExtractNotes()
-    {
-        notes = [];
-
-        int num = openDoc.GetEmbfileCount();
-        for (int i = 0; i < num; ++i)
-        {
-            var info = openDoc.GetEmbfileInfo(i);
-            if (info.Desc != "speaker-note-list")
-                continue;
-
-            string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
-            var noteList = JsonSerializer.Deserialize<SpeakerNote[]>(content);
-            foreach (var n in noteList) {
-                notes.Add(n.Page, n.Note);
-            }
-        }
-    }
-
-    Dictionary<int, (string Filename, float X, float Y, float W, bool IsLoop)> videos;
-
-    void ExtractVideos()
-    {
-        videos = [];
-
-        int num = openDoc.GetEmbfileCount();
-        for (int i = 0; i < num; ++i)
-        {
-            var info = openDoc.GetEmbfileInfo(i);
-            if (info.Desc != "video-list")
-                continue;
-
-            string content = System.Text.Encoding.UTF8.GetString(openDoc.GetEmbfile(i));
-            using StringReader reader = new(content);
-            string line;
-            while ((line = reader.ReadLine()) != null)
-            {
-                var vid = line.Split('*');
-                if (!int.TryParse(vid[0], out int slideNum))
-                    continue;
-
-                bool isVideoLoop = bool.Parse(vid[1]);
-
-                var box = vid[2].Split(',');
-                if (box.Length != 3)
-                    continue;
-                if (!float.TryParse(box[0], out float x)) continue;
-                if (!float.TryParse(box[1], out float y)) continue;
-                if (!float.TryParse(box[2], out float w)) continue;
-
-                string filename = Path.Join(Path.GetDirectoryName(openDocFilename), vid[3]);
-
-                videos.Add(slideNum, (filename, x, y, w, isVideoLoop));
-            }
-       }
     }
 
     void ResetTimerBtn_Click(object sender, RoutedEventArgs eventArgs)
@@ -525,20 +456,12 @@ public partial class MainWindow : Window
         }
     }
 
-    string openDocFilename;
-
     async Task OpenDocument(string filename)
     {
-        if ((!openDoc?.IsClosed) ?? true)
-            openDoc?.Close();
-        openDoc = new MuPDF.NET.Document(filename);
-        openDocFilename = filename;
+        openDoc?.Dispose();
+        openDoc = new(filename);
 
         RecentFilePicker.AddFile(filename, DateTime.Now);
-
-        ResolvePageLabels();
-        ExtractNotes();
-        ExtractVideos();
 
         curPage = 0;
         await RenderCurrentPage();
@@ -548,11 +471,9 @@ public partial class MainWindow : Window
 
     async void LoadPdfBtn_Click(object sender, RoutedEventArgs eventArgs)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Open PDF",
-            AllowMultiple = false
-        });
+        var files = await StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions { Title = "Open PDF", AllowMultiple = false }
+        );
 
         if (files.Count == 1)
         {
@@ -561,24 +482,6 @@ public partial class MainWindow : Window
 
         // Return focus to the parent window so our key bindings keep working
         Focus();
-    }
-
-    async Task<Bitmap> RenderPage(int page, double targetWidth, double targetHeight, bool showAnnotations = false)
-    {
-        float zoomX = (float)(targetWidth * VisualRoot.RenderScaling) / openDoc[curPage].Rect.Width;
-        float zoomY = (float)(targetHeight * VisualRoot.RenderScaling) / openDoc[curPage].Rect.Height;
-        float zoom = float.Min(zoomX, zoomY);
-
-        return await Task.Run(() =>
-        {
-            lock(openDoc)
-            {
-                MuPDF.NET.Pixmap pixmap = openDoc[page].GetPixmap(matrix: new MuPDF.NET.Matrix(zoom, zoom), colorSpace: "rgb",
-                    alpha: false, annots: showAnnotations);
-                return new Bitmap(PixelFormats.Rgb24, AlphaFormat.Opaque, (nint)pixmap.SamplesPtr,
-                    new(pixmap.W, pixmap.H), new(pixmap.Xres, pixmap.Yres), pixmap.W * 3);
-            }
-        });
     }
 
     StackPanel[] thumbnails;
@@ -590,15 +493,19 @@ public partial class MainWindow : Window
 
         List<StackPanel> panels = [];
         double size = 0.0;
-        for (int i = 0; i < pageNumbers.Count; ++i)
+        for (int i = 0; i < openDoc.NumPages; ++i)
         {
-            if (i > 0 && i < pageNumbers.Count - 1 && pageNumbers[i] == pageNumbers[i + 1] )
+            if (
+                i > 0
+                && i < openDoc.NumPages - 1
+                && openDoc.GetSlideNumber(i) == openDoc.GetSlideNumber(i + 1)
+            )
             {
                 panels.Add(panels[^1]); // Duplicate the reference for easy lookup later
                 continue;
             }
 
-            var bmp = await RenderPage(i, 96, 96);
+            var bmp = await openDoc.RenderPage(i, null, 96, 96, VisualRoot.RenderScaling);
 
             // shrink (or grow) height to snugly fit the biggest thumbnails
             double aspect = openDoc[curPage].Rect.Height / openDoc[curPage].Rect.Width;
@@ -613,17 +520,23 @@ public partial class MainWindow : Window
             }
 
             StackPanel stack = new() { Margin = new(0, 0, 4, 0) };
-            var img = new Image() { Width = 96, Height = 96 * aspect, Source = bmp, Cursor = new Cursor(StandardCursorType.Hand) };
+            var img = new Image()
+            {
+                Width = 96,
+                Height = 96 * aspect,
+                Source = bmp,
+                Cursor = new Cursor(StandardCursorType.Hand),
+            };
             var txt = new Avalonia.Controls.TextBlock()
             {
                 Width = 96,
                 TextAlignment = TextAlignment.Center,
-                Text = $"{pageNumbers[i]}",
+                Text = $"{openDoc.GetSlideNumber(i)}",
                 Margin = new(0, 1, 0, 0),
-                Cursor = new Cursor(StandardCursorType.Hand)
+                Cursor = new Cursor(StandardCursorType.Hand),
             };
-            img.PointerReleased += (_,_) => jumpTo();
-            txt.PointerReleased += (_,_) => jumpTo();
+            img.PointerReleased += (_, _) => jumpTo();
+            txt.PointerReleased += (_, _) => jumpTo();
             stack.Children.Add(img);
             stack.Children.Add(txt);
             SlideStrip.Children.Add(stack);
