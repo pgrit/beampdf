@@ -23,6 +23,8 @@ public class PdfSlide : IDisposable
         ExtractVideos();
     }
 
+    System.Threading.Lock pdfLock = new();
+
     public MuPDF.NET.Page this[int page] => openDoc[page];
 
     public async Task<Bitmap> RenderPage(
@@ -43,7 +45,7 @@ public class PdfSlide : IDisposable
 
         return await Task.Run(() =>
         {
-            lock (openDoc)
+            lock (pdfLock)
             {
                 MuPDF.NET.Pixmap pixmap = openDoc[page]
                     .GetPixmap(
@@ -53,7 +55,7 @@ public class PdfSlide : IDisposable
                         annots: showAnnotations,
                         clip: clipRect
                     );
-                return new Bitmap(
+                var bmp = new Bitmap(
                     PixelFormats.Rgb24,
                     AlphaFormat.Opaque,
                     (nint)pixmap.SamplesPtr,
@@ -61,6 +63,8 @@ public class PdfSlide : IDisposable
                     new(pixmap.Xres, pixmap.Yres),
                     pixmap.W * 3
                 );
+                pixmap.Dispose();
+                return bmp;
             }
         });
     }

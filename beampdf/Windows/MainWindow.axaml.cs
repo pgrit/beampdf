@@ -33,6 +33,9 @@ public partial class MainWindow : Window
         cropB;
     bool isCropUpdating;
 
+    // true if we are currently showing a cropped version
+    bool isCropped = false;
+
     void UpdateCrop()
     {
         if (cropA == null || cropB == null)
@@ -57,6 +60,9 @@ public partial class MainWindow : Window
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
+        if (isCropped)
+            return;
+
         var point = e.GetCurrentPoint(PresenterPanel);
 
         if (
@@ -119,6 +125,9 @@ public partial class MainWindow : Window
                 var vMin = Math.Min(vA, vB);
                 var uMax = Math.Max(uA, uB);
                 var vMax = Math.Max(vA, vB);
+
+                // Make sure the crop is not updating while we render it
+                isCropped = true;
                 ShowCrop(uMin, vMin, uMax, vMax);
             }
 
@@ -147,22 +156,25 @@ public partial class MainWindow : Window
             w = displayWindow.Width;
             h = displayWindow.Height;
         }
-        System.Console.WriteLine(w);
-        System.Console.WriteLine(h);
 
-        var bmpT = openDoc.RenderPage(
-            curPage,
-            new(x0, y0, x1, y1),
-            presenterBounds.Width,
-            presenterBounds.Height,
-            VisualRoot.RenderScaling
-        );
-        bmpT.Wait();
-        var bmp = bmpT.Result;
+        double aspect = double.Abs((y1 - y0) / (x1 - x0));
 
-        if (displayWindow != null)
-            displayWindow.RenderTarget.Source = bmp;
-        PresenterRenderTarget.Source = bmp;
+        openDoc
+            .RenderPage(curPage, new(x0, y0, x1, y1), w, h, VisualRoot.RenderScaling)
+            .ContinueWith(
+                (task) =>
+                {
+                    var bmp = task.Result;
+                    Dispatcher.UIThread.Invoke(() =>
+                    {
+                        if (displayWindow != null)
+                            displayWindow.RenderTarget.Source = bmp;
+                        PresenterRenderTarget.Source = bmp;
+
+                        UpdateDrawingArea((float) aspect);
+                    });
+                }
+            );
     }
 
     private void HandleDrop(object sender, DragEventArgs e)
@@ -351,10 +363,23 @@ public partial class MainWindow : Window
 
     public static readonly SolidColorBrush ThumbHighlightColor = new(0xffd3642d);
 
+    void UpdateDrawingArea(double? aspect = null)
+    {
+        if (!aspect.HasValue)
+            aspect = openDoc[curPage].Rect.Height / openDoc[curPage].Rect.Width;
+
+        DrawingArea.SetAspectRatio(aspect.Value);
+        MarkerCanvas.Height = aspect.Value * MarkerCanvas.Bounds.Width;
+    }
+
     async Task RenderCurrentPage()
     {
         if (openDoc == null)
             return;
+
+        // Disable any ongoing crop
+        cropA = cropB = null;
+        isCropped = false;
 
         if (curPage >= openDoc.NumPages)
             curPage = openDoc.NumPages - 1;
@@ -400,10 +425,7 @@ public partial class MainWindow : Window
             PreviewRenderTarget.Source = null;
         }
 
-        // Update drawing area
-        var aspect = openDoc[curPage].Rect.Height / openDoc[curPage].Rect.Width;
-        DrawingArea.SetAspectRatio(aspect);
-        MarkerCanvas.Height = aspect * MarkerCanvas.Bounds.Width;
+        UpdateDrawingArea();
 
         // Highlight thumbnail
         if (thumbnails != null)
