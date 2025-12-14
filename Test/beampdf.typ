@@ -20,7 +20,7 @@
   let list-str = "[" + query(<speaker-note>)
     .map(it => {
       let page = "\"page\":" + str(it.location().page())
-      let note = "\"note\":\"" + it.value.replace("\n", "\\n") + "\""
+      let note = "\"note\":\"" + it.value.replace("\n", "\\n").replace("\"", "\\\"") + "\""
       "{" + page + "," + note + "}"
     })
     .join(",\n") + "]"
