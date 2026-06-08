@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using Desktop.DBus;
 using Tmds.DBus.Protocol;
 
 namespace beampdf;
@@ -17,7 +16,8 @@ public static class SleepInhibitor
     {
         // Windows requires us to repeatedly call a function to avoid sleep
         timer = new(1000.0);
-        timer.Elapsed += delegate {
+        timer.Elapsed += delegate
+        {
             // ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED
             SetThreadExecutionState(0x00000002 | 0x00000001);
         };
@@ -28,19 +28,23 @@ public static class SleepInhibitor
     {
         // On Linux, we inhibit sleep via a desktop portal
         // (so it also works in a sandboxed environment)
-        Connection connection = new(Address.Session);
-        Task.Run(async () =>
-        {
-            await connection.ConnectAsync();
-            DesktopService desktop = new(connection, "org.freedesktop.portal.Desktop");
-            var inhibit = desktop.CreateInhibit("/org/freedesktop/portal/desktop");
-            await inhibit.InhibitAsync("", 4 | 8, new() { ["reason"] = "Presenting slides"});
+        var connection = new DBusConnection(DBusAddress.Session);
+        Task.Run(async () => {
+            // FIXME  this will work again once a new version of Avalonia (>12.0.4) is released with the Tmds.DBus bugfix for codegen
+            // await connection.ConnectAsync();
+            // var inhibit = new DBus.Inhibit(
+            //     connection,
+            //     "org.freedesktop.portal.Desktop",
+            //     "/org/freedesktop/portal/desktop"
+            // );
+            // await inhibit.InhibitAsync("", 4 | 8, new() { ["reason"] = "Presenting slides" });
         });
     }
 
     public static void Inhibit()
     {
-        if (active) return;
+        if (active)
+            return;
 
         if (OperatingSystem.IsWindows())
             InhibitWindows();

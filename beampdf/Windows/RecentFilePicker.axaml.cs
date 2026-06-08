@@ -60,8 +60,9 @@ public partial class RecentFilePicker : Window
     {
         MuPDF.NET.Document openDoc = new(filename);
 
-        float zoomX = (float)(thumbnailSize * VisualRoot.RenderScaling) / openDoc[0].Rect.Width;
-        float zoomY = (float)(thumbnailSize * VisualRoot.RenderScaling) / openDoc[0].Rect.Height;
+        var scaling = TopLevel.GetTopLevel(this).RenderScaling;
+        float zoomX = (float)(thumbnailSize * scaling) / openDoc[0].Rect.Width;
+        float zoomY = (float)(thumbnailSize * scaling) / openDoc[0].Rect.Height;
         float zoom = float.Min(zoomX, zoomY);
 
         var result = await Task.Run(() =>
@@ -94,7 +95,8 @@ public partial class RecentFilePicker : Window
         Populate();
     }
 
-    protected override void OnKeyDown(KeyEventArgs e) {
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
         if (e.Key == Key.Escape)
             Close();
     }
@@ -131,7 +133,10 @@ public partial class RecentFilePicker : Window
             // Workaround for Avalonia focus weirdness:
             // Dialog will only get focus if we force focus on an InputElement
             // And we cannot do that before adding to the visual tree is doen.
-            btn.AttachedToVisualTree += delegate { btn.Focus(); };
+            btn.AttachedToVisualTree += delegate
+            {
+                btn.Focus();
+            };
 
             ToolTip.SetTip(txt, entry.Name);
             ToolTip.SetTip(img, entry.Name);
@@ -140,7 +145,10 @@ public partial class RecentFilePicker : Window
                 SelectedFilename = entry.Name;
                 Close();
             }
-            btn.Click += delegate { open(); };
+            btn.Click += delegate
+            {
+                open();
+            };
 
             StackPanel stack = new() { Margin = new(30) };
             stack.Children.Add(btn);
@@ -149,4 +157,3 @@ public partial class RecentFilePicker : Window
         }
     }
 }
-

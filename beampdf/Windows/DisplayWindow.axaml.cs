@@ -26,7 +26,7 @@ public partial class DisplayWindow : Window
         InitializeComponent();
 
         ExtendClientAreaToDecorationsHint = true;
-        ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
+        WindowDecorations = WindowDecorations.None;
 
         SleepInhibitor.Inhibit();
     }
@@ -69,7 +69,6 @@ public partial class DisplayWindow : Window
         using var media = new Media(Libvlc, filename);
         await media.Parse();
         var vidTrack = media.Tracks[0].Data.Video;
-
 
         // Position the video view
         x = RenderTarget.Bounds.Left + x * RenderTarget.Bounds.Width;

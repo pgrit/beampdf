@@ -1,24 +1,43 @@
+using System.Diagnostics;
+
 namespace beampdf;
 
 public class DrawingArea : Panel
 {
-    protected override Type StyleKeyOverride { get { return typeof(Panel); } }
+    protected override Type StyleKeyOverride
+    {
+        get { return typeof(Panel); }
+    }
+
+    Timer timer;
 
     public DrawingArea()
     {
         Background = Brushes.Transparent; // Required for mouse events to trigger
-        Children.Add(viewer);
+        Children.Add(backgroundImage);
+        Children.Add(image);
 
-        image = new(new(resX, resY));
-        viewer.Source = image;
+        bitmap = new(new(resX, resY));
+        backgroundBitmap = new(new(resX, resY));
+        image.Source = bitmap;
+        backgroundImage.Source = backgroundBitmap;
+
         if (SyncTarget != null)
-            SyncTarget.Source = image;
+            SyncTarget.Source = bitmap;
+
+        // Setup a timer to fade the laser
+        timer = new(LaserTimeMs / 10000.0); // 10 ticks per interval
+        timer.Elapsed += (_, _) => UpdateLaser();
+        timer.Start();
     }
 
-    int resX = 3840, resY = 2160;
+    int resX = 3840,
+        resY = 2160;
 
-    Image viewer = new();
-    RenderTargetBitmap image;
+    Image image = new();
+    RenderTargetBitmap bitmap;
+    Image backgroundImage = new();
+    RenderTargetBitmap backgroundBitmap;
 
     PointerPoint? lastP;
 
@@ -27,6 +46,9 @@ public class DrawingArea : Panel
         var point = evt.GetCurrentPoint(target);
         if (point.Properties.IsLeftButtonPressed && !evt.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
+            // TODO the !Ctrl is a hard-coded check to avoid conflict with crop selection
+            //      this should be handled in a more central way
+
             // Map position to that of the render target
             double scaleX = target.Bounds.Width / resX;
             double scaleY = target.Bounds.Height / resY;
@@ -60,16 +82,41 @@ public class DrawingArea : Panel
         {
             lastP = null;
         }
-        // TODO linearly interpolate -- place additional dots along the line to the previous position with space depending on radius
     }
 
-    protected override void OnPointerMoved(PointerEventArgs e) => HandleDraw(e, viewer);
+    protected override void OnPointerMoved(PointerEventArgs e) => HandleDraw(e, image);
 
-    public static readonly SolidColorBrush DrawColor = new(0xff127db2); // TODO shortcuts to switch color
+    protected override void OnPointerPressed(PointerPressedEventArgs e) => HandleDraw(e, image);
+
+    public uint PenColor { get; set; } = 0xff127db2;
+    public bool IsLaserMode { get; set; } = false;
+
+    /// <summary>
+    /// Time in milliseconds after the last "draw" event to clear the laser strokes
+    /// </summary>
+    public readonly int LaserTimeMs = 500;
+
+    Stopwatch laserTimer = new();
 
     void Draw(Point pos, float pressure)
     {
-        using (DrawingContext ctx = image.CreateDrawingContext(false))
+        SolidColorBrush DrawColor = new(PenColor);
+
+        using (DrawingContext ctx = bitmap.CreateDrawingContext(false))
+        {
+            new GeometryDrawing()
+            {
+                Geometry = new EllipseGeometry()
+                {
+                    Center = pos,
+                    RadiusX = pressure * 5,
+                    RadiusY = pressure * 5,
+                },
+                Brush = DrawColor,
+            }.Draw(ctx);
+        }
+
+        using (DrawingContext ctx = backgroundBitmap.CreateDrawingContext(false))
         {
             new GeometryDrawing()
             {
@@ -79,28 +126,53 @@ public class DrawingArea : Panel
                     RadiusX = pressure * 10,
                     RadiusY = pressure * 10,
                 },
-                Brush = DrawColor,
+                Brush = new SolidColorBrush(IsLaserMode ? 0xffffffff : 0xff000000),
             }.Draw(ctx);
         }
+        backgroundImage.InvalidateVisual();
 
-        viewer.InvalidateVisual();
+        image.InvalidateVisual();
         SyncTarget?.InvalidateVisual();
+
+        lock (laserTimer)
+            laserTimer.Restart();
     }
 
     public void Clear()
     {
-        using (DrawingContext ctx = image.CreateDrawingContext(true)) { }
-        viewer.InvalidateVisual();
+        using (DrawingContext ctx = bitmap.CreateDrawingContext(true)) { }
+        using (DrawingContext ctx = backgroundBitmap.CreateDrawingContext(true)) { }
+        image.InvalidateVisual();
+        backgroundImage.InvalidateVisual();
         SyncTarget?.InvalidateVisual();
+    }
+
+    private void UpdateLaser()
+    {
+        // The timer does not run in the UI thread, so we need to sync
+        lock (laserTimer)
+        {
+            if (!IsLaserMode)
+                return;
+
+            if (laserTimer.ElapsedMilliseconds < LaserTimeMs)
+                return;
+
+            laserTimer.Reset();
+
+            Dispatcher.UIThread.Invoke(Clear);
+
+            // TODO should we keep laser strokes in a separate image?
+        }
     }
 
     public void SetAspectRatio(double aspect)
     {
         resY = (int)(aspect * resX);
-        image = new(new(resX, resY));
-        viewer.Source = image;
-        if (SyncTarget != null)
-            SyncTarget.Source = image;
+        bitmap = new(new(resX, resY));
+        backgroundBitmap = new(new(resX, resY));
+        image.Source = bitmap;
+        backgroundImage.Source = backgroundBitmap;
     }
 
     public Image SyncTarget
@@ -109,7 +181,8 @@ public class DrawingArea : Panel
         set
         {
             field = value;
-            if (field == null) return;
+            if (field == null)
+                return;
             field.PointerMoved += (_, evt) =>
             {
                 HandleDraw(evt, SyncTarget);

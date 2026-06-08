@@ -159,8 +159,9 @@ public partial class MainWindow : Window
 
         double aspect = double.Abs((y1 - y0) / (x1 - x0));
 
+        var scaling = TopLevel.GetTopLevel(this).RenderScaling;
         openDoc
-            .RenderPage(curPage, new(x0, y0, x1, y1), w, h, VisualRoot.RenderScaling)
+            .RenderPage(curPage, new(x0, y0, x1, y1), w, h, scaling)
             .ContinueWith(
                 (task) =>
                 {
@@ -171,7 +172,7 @@ public partial class MainWindow : Window
                             displayWindow.RenderTarget.Source = bmp;
                         PresenterRenderTarget.Source = bmp;
 
-                        UpdateDrawingArea((float) aspect);
+                        UpdateDrawingArea((float)aspect);
                     });
                 }
             );
@@ -286,6 +287,36 @@ public partial class MainWindow : Window
 
         if (e.Key == Key.OemPeriod)
             displayWindow?.RestartVideo();
+
+        if (e.Key == Key.L)
+        {
+            DrawingArea.PenColor = 0xffC21038;
+            DrawingArea.IsLaserMode = true;
+            // TODO reset to last used color?
+            //      Maybe a better design is to keep the whole laser stuff completely separate
+        }
+
+        // TODO check for physical location equivalent to QWERTY layout instead?
+        if (e.Key == Key.Z || e.Key == Key.Y)
+        {
+            DrawingArea.PenColor = 0xff137DB3;
+            DrawingArea.IsLaserMode = false;
+        }
+        if (e.Key == Key.X)
+        {
+            DrawingArea.PenColor = 0xffD4652E;
+            DrawingArea.IsLaserMode = false;
+        }
+        if (e.Key == Key.C)
+        {
+            DrawingArea.PenColor = 0xff0EC299;
+            DrawingArea.IsLaserMode = false;
+        }
+        if (e.Key == Key.V)
+        {   
+            DrawingArea.PenColor = 0xffFFD166;
+            DrawingArea.IsLaserMode = false;
+        }
     }
 
     void CloseSlides()
@@ -387,6 +418,8 @@ public partial class MainWindow : Window
         if (curPage > 0 && !presentStart.HasValue)
             presentStart = DateTime.Now;
 
+        var scaling = TopLevel.GetTopLevel(this).RenderScaling;
+
         if (displayWindow != null && double.IsFinite(displayWindow.Width))
         {
             displayWindow.RenderTarget.Source = await openDoc.RenderPage(
@@ -394,7 +427,7 @@ public partial class MainWindow : Window
                 null,
                 displayWindow.Width,
                 displayWindow.Height,
-                VisualRoot.RenderScaling
+                scaling
             );
         }
 
@@ -404,7 +437,7 @@ public partial class MainWindow : Window
             null,
             presenterBounds.Width,
             presenterBounds.Height,
-            VisualRoot.RenderScaling,
+            scaling,
             true
         );
 
@@ -417,7 +450,7 @@ public partial class MainWindow : Window
                 null,
                 previewBounds.Width,
                 previewBounds.Height,
-                VisualRoot.RenderScaling
+                scaling
             );
         }
         else
@@ -527,7 +560,8 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            var bmp = await openDoc.RenderPage(i, null, 96, 96, VisualRoot.RenderScaling);
+            var scaling = TopLevel.GetTopLevel(this).RenderScaling;
+            var bmp = await openDoc.RenderPage(i, null, 96, 96, scaling);
 
             // shrink (or grow) height to snugly fit the biggest thumbnails
             double aspect = openDoc[curPage].Rect.Height / openDoc[curPage].Rect.Width;
