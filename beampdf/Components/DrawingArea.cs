@@ -14,16 +14,11 @@ public class DrawingArea : Panel
     public DrawingArea()
     {
         Background = Brushes.Transparent; // Required for mouse events to trigger
-        Children.Add(backgroundImage);
         Children.Add(image);
 
         bitmap = new(new(resX, resY));
-        backgroundBitmap = new(new(resX, resY));
         image.Source = bitmap;
-        backgroundImage.Source = backgroundBitmap;
-
-        if (SyncTarget != null)
-            SyncTarget.Source = bitmap;
+        SyncTarget?.Source = bitmap;
 
         // Setup a timer to fade the laser
         timer = new(LaserTimeMs / 10000.0); // 10 ticks per interval
@@ -36,8 +31,6 @@ public class DrawingArea : Panel
 
     Image image = new();
     RenderTargetBitmap bitmap;
-    Image backgroundImage = new();
-    RenderTargetBitmap backgroundBitmap;
 
     PointerPoint? lastP;
 
@@ -109,28 +102,12 @@ public class DrawingArea : Panel
                 Geometry = new EllipseGeometry()
                 {
                     Center = pos,
-                    RadiusX = pressure * 5,
-                    RadiusY = pressure * 5,
+                    RadiusX = pressure * 10,
+                    RadiusY = pressure * 10,
                 },
                 Brush = DrawColor,
             }.Draw(ctx);
         }
-
-        using (DrawingContext ctx = backgroundBitmap.CreateDrawingContext(false))
-        {
-            new GeometryDrawing()
-            {
-                Geometry = new EllipseGeometry()
-                {
-                    Center = pos,
-                    RadiusX = pressure * 10,
-                    RadiusY = pressure * 10,
-                },
-                Brush = new SolidColorBrush(IsLaserMode ? 0xffffffff : 0xff000000),
-            }.Draw(ctx);
-        }
-        backgroundImage.InvalidateVisual();
-
         image.InvalidateVisual();
         SyncTarget?.InvalidateVisual();
 
@@ -141,9 +118,7 @@ public class DrawingArea : Panel
     public void Clear()
     {
         using (DrawingContext ctx = bitmap.CreateDrawingContext(true)) { }
-        using (DrawingContext ctx = backgroundBitmap.CreateDrawingContext(true)) { }
         image.InvalidateVisual();
-        backgroundImage.InvalidateVisual();
         SyncTarget?.InvalidateVisual();
     }
 
@@ -170,9 +145,8 @@ public class DrawingArea : Panel
     {
         resY = (int)(aspect * resX);
         bitmap = new(new(resX, resY));
-        backgroundBitmap = new(new(resX, resY));
         image.Source = bitmap;
-        backgroundImage.Source = backgroundBitmap;
+        SyncTarget?.Source = bitmap;
     }
 
     public Image SyncTarget
@@ -183,10 +157,7 @@ public class DrawingArea : Panel
             field = value;
             if (field == null)
                 return;
-            field.PointerMoved += (_, evt) =>
-            {
-                HandleDraw(evt, SyncTarget);
-            };
+            field.PointerMoved += (_, evt) => HandleDraw(evt, SyncTarget);
         }
     }
 }
