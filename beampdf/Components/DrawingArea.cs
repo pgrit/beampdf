@@ -87,7 +87,7 @@ public class DrawingArea : Panel
     /// <summary>
     /// Time in milliseconds after the last "draw" event to clear the laser strokes
     /// </summary>
-    public readonly int LaserTimeMs = 500;
+    public readonly int LaserTimeMs = 1000;
 
     Stopwatch laserTimer = new();
 
