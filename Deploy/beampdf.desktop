@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=BeamPDF
+Comment=Presentation software for slides in PDF format
+Terminal=false
+Categories=Education;Office;Graphics;Viewer
+Exec=bin/beampdf
+Icon=256x256
