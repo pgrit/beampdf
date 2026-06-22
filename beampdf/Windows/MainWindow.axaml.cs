@@ -313,7 +313,7 @@ public partial class MainWindow : Window
             DrawingArea.IsLaserMode = false;
         }
         if (e.Key == Key.V)
-        {   
+        {
             DrawingArea.PenColor = 0xffFFD166;
             DrawingArea.IsLaserMode = false;
         }
@@ -357,17 +357,15 @@ public partial class MainWindow : Window
         // Only toggle fullscreen once we're sure the Window is positioned
         // This is required on Linux, without it fullscreen just uses a
         // random screen
-        displayWindow.Resized += (_, _) =>
+        displayWindow.Activated += (_, _) =>
         {
             displayWindow.WindowState = WindowState.FullScreen;
         };
+        displayWindow.Activate();
 
         DrawingArea.SyncTarget = displayWindow?.Overlay;
 
-        // Toggling fullscreen activates the window, we undo that to retain focus
-        Activate();
-
-        displayWindow.Resized += (_, args) =>
+        displayWindow.Resized += (_, _) =>
         {
             _ = RenderCurrentPage();
         };
