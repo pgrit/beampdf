@@ -29,15 +29,15 @@ public static class SleepInhibitor
         // On Linux, we inhibit sleep via a desktop portal
         // (so it also works in a sandboxed environment)
         var connection = new DBusConnection(DBusAddress.Session);
-        Task.Run(async () => {
-            // FIXME  this will work again once a new version of Avalonia (>12.0.4) is released with the Tmds.DBus bugfix for codegen
-            // await connection.ConnectAsync();
-            // var inhibit = new DBus.Inhibit(
-            //     connection,
-            //     "org.freedesktop.portal.Desktop",
-            //     "/org/freedesktop/portal/desktop"
-            // );
-            // await inhibit.InhibitAsync("", 4 | 8, new() { ["reason"] = "Presenting slides" });
+        Task.Run(async () =>
+        {
+            await connection.ConnectAsync();
+            var inhibit = new DBusPortal.Inhibit(
+                connection,
+                "org.freedesktop.portal.Desktop",
+                "/org/freedesktop/portal/desktop"
+            );
+            await inhibit.InhibitAsync("", 4 | 8, new() { ["reason"] = "Presenting slides" });
         });
     }
 
